@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // AND GPL-3.0-or-later
+// For ETH Only
 pragma solidity 0.7.5;
 
 // includes Openzeppelin 3.3.0 contracts:
