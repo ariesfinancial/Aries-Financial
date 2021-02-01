@@ -1,12 +1,7 @@
-// SPDX-License-Identifier: MIT
-// AND GPL-3.0-or-later
-// For ETH Only
-pragma solidity 0.7.5;
+//"SPDX-License-Identifier: MIT"
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
-// includes Openzeppelin 3.3.0 contracts:
-// ... Context -> Ownable
-// ... SafeMath, Address, SafeERC20
-// ... IERC20, ERC20(aka ERC20Detailed),
 
 // File: @openzeppelin/contracts/GSN/Context.sol
 abstract contract Context {
@@ -169,6 +164,7 @@ library SafeMath {
     // }
 }
 
+
 // File: @openzeppelin/contracts/utils/Address.sol
 //pragma solidity >=0.6.2 <0.8.0;
 
@@ -305,7 +301,7 @@ library Address {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
-    // functionStaticCall x2
+// functionStaticCall x2
 
     function _verifyCallResult(
         bool success,
@@ -454,10 +450,6 @@ library SafeERC20 {
     }
 }
 
-pragma abicoder v2;
-
-//import "./openzeppelinERC20ITF.sol";
-//import "./signedSafeMath.sol";
 interface IABDKMathQuadFunc {
     function mulMul(
         uint256 x,
@@ -470,6 +462,11 @@ interface IABDKMathQuadFunc {
         uint256 y,
         uint256 z
     ) external pure returns (uint256);
+}
+
+interface IUserRecord {
+  function addBet(address user, uint256 period, uint256 idx) external;
+  function updateBet(address user, uint256 period, uint256 idx) external;
 }
 
 abstract contract Administration is Ownable {
@@ -494,21 +491,16 @@ abstract contract Administration is Ownable {
         return _msgSender() == admin;
     }
 
-    function transferAdmin(address newAdmin) public onlyOwner {
-        require(newAdmin != address(0), "cannot be zero address");
-        emit AccountTransferred(admin, newAdmin);
-        admin = newAdmin;
+    function transferAccount(address addrNew, uint256 num) external onlyOwner {
+        require(addrNew != address(0), "cannot be zero address");
+        if(num == 0) admin = addrNew;
+        if(num == 1) governance = addrNew;
+        emit AccountTransferred(admin, addrNew);        
     }
 
     //-------------------==
     function isOnlyGov() public view returns (bool) {
         return _msgSender() == governance;
-    }
-
-    function transferGov(address newGov) public onlyOwner {
-        require(newGov != address(0), "cannot be zero address");
-        emit AccountTransferred(governance, newGov);
-        governance = newGov;
     }
 }
 
@@ -517,8 +509,6 @@ contract PriceBettingT1S2 is Administration {
     //using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
     using Address for address;
-
-    event SetVault(address indexed user, address indexed newAddr);
 
     event Win(
         address indexed user,
@@ -543,11 +533,6 @@ contract PriceBettingT1S2 is Administration {
     );
     // uint256 public constant MIN5 = 5 minutes; //300
 
-    address public addrPriceFeed;
-    // AggregatorEthereumV3 internal priceFeedEtheremV3;
-    // AggregatorXDAI internal PriceFeed;
-    uint256 public EVMChainID = 100;
-
     uint256 public idxStart60 = 0;
     uint256 public idxStart300 = 0;
     uint256 public idxEnd60 = 0;
@@ -555,6 +540,7 @@ contract PriceBettingT1S2 is Administration {
     uint256 public maxBetPoolRatio = 5;
     uint256 public maxOldBetsAmountToClear = 3;
     address private vault;
+    bool public bettingStatus = true;
 
     mapping(uint256 => Bet) public bets60;
     mapping(uint256 => Bet) public bets300;
@@ -562,47 +548,51 @@ contract PriceBettingT1S2 is Administration {
     IERC20 public token;
     IABDKMathQuadFunc public ABDKMathQuadFunc;
 
-    //IStakingPool public stakingPool;
+    address public addrPriceFeed;
+    // AggregatorEthereumV3 internal priceFeedEtheremV3;
+    // AggregatorXDAI internal PriceFeed;
+    address public addrUserRecord;
 
-    constructor() {
+    constructor(
+    ) {
         token = IERC20(0xc81c785653D97766b995D867CF91F56367742eAC);
         ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
         addrPriceFeed = address(0xC3eFff1B3534Ab5e2Ce626DCF1783b7E83154eF4);
-
     } /*
+        token = IERC20(0xc81c785653D97766b995D867CF91F56367742eAC);
+        ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
+        addrPriceFeed = address(0xC3eFff1B3534Ab5e2Ce626DCF1783b7E83154eF4);
      */
 
     //--------------------== onlyAdmin settings
-    function setVault(address _vault) external onlyAdmin {
+    event SetSettings(uint256 indexed option, address addr, bool _bool, uint256 uintNum);
+
+    function setSettings(uint256 option, address addr, bool _bool, uint256 uintNum) external onlyAdmin {
+      if(option == 102){
+        bettingStatus = _bool;
+
+      } else if(option == 103){
+        require(uintNum > 0 && uintNum <= 10, "invalid number");
+        maxBetPoolRatio = uintNum;
+
+      } else if(option == 104){
+        require(uintNum > 0, "amount cannot be 0");
+        maxOldBetsAmountToClear = uintNum;
+
+      } else if(option == 105){
+        require(uintNum > 0 && uintNum <= 100, "ratio invalid");
+        profitRatio = uintNum;
+
+      } else if(option == 999){
         //require(address(token).isContract(), "call to non-contract");
-        require(_vault != address(0), "vault cannot be zero address");
-        vault = _vault;
-        emit SetVault(msg.sender, _vault);
-    }
+        require(addr != address(0), "vault cannot be zero address");
+        vault = addr;
 
-    function setMaxBetPoolRatio(uint256 _maxBetPoolRatio) external onlyAdmin {
-        require(
-            _maxBetPoolRatio > 0 && _maxBetPoolRatio <= 10,
-            "amount invalid"
-        );
-        maxBetPoolRatio = _maxBetPoolRatio;
-    }
-
-    function setMaxOldBetsAmountToClear(uint256 _maxOldBetsAmountToClear)
-        external
-        onlyAdmin
-    {
-        require(_maxOldBetsAmountToClear > 0, "amount cannot be 0");
-        maxOldBetsAmountToClear = _maxOldBetsAmountToClear;
-    }
-
-    function setProfitRatio(uint256 profitRatio1) external onlyAdmin {
-        require(profitRatio1 > 0 && profitRatio1 <= 100, "ratio invalid");
-        profitRatio = profitRatio1;
-    }
-
-    function setEVMChainID(uint256 _EVMChainID) external onlyAdmin {
-        EVMChainID = _EVMChainID;
+      } else if(option == 989){
+        require(address(addr).isContract(), "invalid contract");
+        addrUserRecord = addr;
+      }
+      emit SetSettings(option, addr, _bool, uintNum);
     }
 
     //--------------------== Public functions
@@ -639,66 +629,63 @@ contract PriceBettingT1S2 is Administration {
         clearBets(block.timestamp, price, period);
     }
 
-    // function calcMaxBet() public view returns (uint256) {
-    //       return ABDKMathQuadFunc.mulDiv(poolBalance, maxBetPoolRatio, 100);//poolBalance.mul(maxBetPoolRatio).div(100);
-    // }
+    function calcMaxBet() public view returns (uint256) {
+          return ABDKMathQuadFunc.mulDiv(poolBalance, maxBetPoolRatio, 100);
+    }
     function enterBetCheck(
         uint256 amount,
         uint256 period,
         uint256 bettingOutcome,
         uint256 fundingSource
     )
-        public
-        view
+        public view
         returns (
             bool[] memory bools,
             uint256[] memory uints,
+            uint256[] memory uintsInputs,
             bool boolOut
         )
     {
-        bools = new bool[](8);
-        uints = new uint256[](4);
-        uint256 maxBet =
-            ABDKMathQuadFunc.mulDiv(poolBalance, maxBetPoolRatio, 100); //calcMaxBet();
+        bools = new bool[](9);
+        uints = new uint256[](7);
+        uintsInputs = new uint256[](4);
+        
+        uintsInputs[0] = amount;
+        uintsInputs[1] = period;
+        uintsInputs[2] = bettingOutcome;
+        uintsInputs[3] = fundingSource;
+
+        uint256 allowed = token.allowance(msg.sender, address(this));
+        uint256 maxBet = calcMaxBet();
         bools[0] = amount > 0 && amount <= maxBet;
         bools[1] = period == 60 || period == 300;
         bools[2] = bettingOutcome < 2;
-        bools[3] = true; //tokenPair < 2;
-        bools[4] = fundingSource < 2; // balance: 0, deposit: 1
+        bools[3] = fundingSource < 2; // balance: 0, deposit: 1
         uint256 maxTotalUnclaimedOut = maxTotalUnclaimed();
-        bools[5] = totalUnclaimed <= maxTotalUnclaimedOut;
+        bools[4] = totalUnclaimed <= maxTotalUnclaimedOut;
         uint256 tokenBalanceAtFundingSrc;
 
         if (fundingSource == 0) {
             tokenBalanceAtFundingSrc = betters[msg.sender].deposit;
-            bools[7] =
-                totalUnclaimed >= amount &&
-                betters[msg.sender].unclaimed >= amount;
+            bools[6] = totalUnclaimed >= amount;
+            bools[7] = betters[msg.sender].balance >= amount;
         } else {
             tokenBalanceAtFundingSrc = token.balanceOf(msg.sender);
+            bools[6] = allowed >= amount;
             bools[7] = true;
         }
-        bools[6] = tokenBalanceAtFundingSrc >= amount;
-        boolOut =
-            bools[0] &&
-            bools[1] &&
-            bools[2] &&
-            bools[3] &&
-            bools[4] &&
-            bools[5] &&
-            bools[6] &&
-            bools[7];
-        //allowance failed?
-        //getLatestPrices failed?
-        //boolOut = true;
-        // for(uint i = 0; i < bools.length; i++) {
-        //     boolOut = boolOut && bools[i];
-        // }
+        bools[5] = tokenBalanceAtFundingSrc >= amount;
+        bools[8] = bettingStatus;
 
-        uints[0] = maxBet;
+        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8];
+
+        uints[0] = allowed;
         uints[1] = tokenBalanceAtFundingSrc;
-        uints[2] = totalUnclaimed;
-        uints[3] = maxTotalUnclaimedOut;
+        uints[2] = maxBet;
+        uints[3] = totalUnclaimed;
+        uints[4] = betters[msg.sender].balance;
+        uints[5] = maxTotalUnclaimedOut;
+        uints[6] = getLatestPrice();
     }
 
     function enterBet(
@@ -707,7 +694,7 @@ contract PriceBettingT1S2 is Administration {
         uint256 bettingOutcome,
         uint256 fundingSource
     ) external {
-        (, , bool boolOut) =
+        (, , ,bool boolOut) =
             enterBetCheck(
                 amount,
                 period,
@@ -737,18 +724,20 @@ contract PriceBettingT1S2 is Administration {
         bet.fundingSource = fundingSource;
         bet.result = -1;
 
-        totalBetAmount = totalBetAmount.add(amount);
+        totalUnsettledBetAmt = totalUnsettledBetAmt.add(amount);
         //console.log("[sc] bet:", bet);
 
         if (period == 60) {
             idxEnd60 = idxEnd60.add(1);
             bets60[idxEnd60] = bet;
+            IUserRecord(addrUserRecord).addBet(msg.sender, period, idxEnd60);
             if (idxEnd60 == 1) {
                 idxStart60 = 1;
             }
         } else if (period == 300) {
             idxEnd300 = idxEnd300.add(1);
             bets300[idxEnd300] = bet;
+            IUserRecord(addrUserRecord).addBet(msg.sender, period, idxEnd300);
             if (idxEnd300 == 1) {
                 idxStart300 = 1;
             }
@@ -764,14 +753,12 @@ contract PriceBettingT1S2 is Administration {
         uint256 priceAtBet;
         uint256 bettingOutcome; //0 down, 1 up, 2 same, 3 uknown
         uint256 fundingSource; //0 balance, 1 deposit
-        int256 result; //amount*1.88 as total winning amount, and 0 for losing the bet amount, amount*1 as tie returned to the better
+        int256 result; //amount*1.88 as total winning amount, and 0 for losing the bet amount, amount*1 returned to the better for a tie, -1 for bet not cleared yet
         //uint256 paidAt; //time this bet was paid
     }
 
     function getBet(uint256 period, uint256 betIdx)
-        public
-        view
-        returns (Bet memory bet)
+        public view returns (Bet memory bet)
     {
         if (period == 60) bet = bets60[betIdx];
         if (period == 300) bet = bets300[betIdx];
@@ -812,7 +799,7 @@ contract PriceBettingT1S2 is Administration {
                 betIdx < idxStart.add(maxOldBetsAmountToClear);
                 betIdx++
             ) {
-                //console.log("[sc] ----------== loop");
+                //console.log("[sc] ---------== loop");
                 //console.log("[sc] betIdx: %s, period: %s", betIdx, period);
                 Bet memory bet = getBet(period, betIdx);
 
@@ -857,7 +844,7 @@ contract PriceBettingT1S2 is Administration {
 
         //console.log("bet.amount", bet.amount, gain, gainAndPrincipal);
 
-        totalBetAmount = totalBetAmount.sub(bet.amount);
+        totalUnsettledBetAmt = totalUnsettledBetAmt.sub(bet.amount);
 
         if (price < bet.priceAtBet) {
             govBalance = govBalance.add(govGain);
@@ -904,6 +891,8 @@ contract PriceBettingT1S2 is Administration {
         uint256 bettingOutcome; //0 down, 1 up, 2 same, 3 uknown
         uint256 result;//amount*1.88 as total winning amount, and 0 for losing the bet amount, amount*1 as tie returned to the better
         uint256 fundingSource;
+
+
     }*/
     function handleWinning(
         uint256 period,
@@ -912,61 +901,73 @@ contract PriceBettingT1S2 is Administration {
         uint256 gainAndPrincipal
     ) internal {
         //console.log("[sc] ----== handleWinning");
-        //console.log("[sc] handleWinning",gain, gainAndPrincipal);
+        //console.log(period, betIdx, gain, gainAndPrincipal);
         Bet memory bet = getBet(period, betIdx);
         poolBalance = poolBalance.sub(bet.amount);
         // Pool loses 1, the governance gets 0.12
 
-        uint256 amt; //add to totalUnclaimed and unclaimed
-        if (bet.fundingSource == 0) {
-            //balance: 0.88
-            amt = gain;
-        } else {
-            //deposit: 1.88
+        uint256 amt; //add to totalUnclaimed and balance
+        if (bet.fundingSource == 1) {
+            //betting from deposit
             amt = gainAndPrincipal;
-            //token.safeTransfer(bet.addr, gainAndPrincipal);
-            //amount*1.88 as total winning amount, and 0 for losing the bet amount, amount*1 as tie returned to the better
+            //add 1.88 in his betterBalance and add 0.88 in his betterWinloss 
+            //add 0.88 in totalUnclaimed
+        } else {
+            //betting from balance
+            amt = gain;
+            //add 0.88 in his betterBalance and add 0.88 in his betterWinloss
+            //add 0.88 in totalUnclaimed
         }
         //console.log("[sc] amt:", amt);
-        totalUnclaimed = totalUnclaimed.add(amt);
-        updateBetterUnclaimed(true, amt, bet.addr);
+        updateBetterBalance(true, amt, bet.addr);
+        updateBetterWinloss(true, gain, bet.addr);
+        totalUnclaimed = totalUnclaimed.add(gain);
         setBetResult(period, betIdx, gainAndPrincipal);
         Win(bet.addr, block.timestamp, amt, betIdx, bet.period);
+        IUserRecord(addrUserRecord).updateBet(bet.addr, bet.period, betIdx);
     }
-
+/**
+interface IUserRecord {
+  function addBet(address user, uint256 period, uint256 idx) external;
+  function updateBet(address user, uint256 period, uint256 idx) external;
+}*/
     function handleLosing(
         uint256 period,
         uint256 betIdx,
         uint256 gain
     ) internal {
-        //console.log("[sc] ----== handleLosing");
+        //console.log("[sc] ----== handleLosing:", period, betIdx, gain);
         Bet memory bet = getBet(period, betIdx);
         poolBalance = poolBalance.add(gain);
         // Pool gets 0.88, the governance gets 0.12
-
-        if (bet.fundingSource == 0) {
-            //use user's balance: totalUnclaimed and unclaimed substract 1
-            totalUnclaimed = totalUnclaimed.sub(bet.amount);
-            updateBetterUnclaimed(false, bet.amount, bet.addr);
-        } //else for deposit: he loses 1[no change]
+        if (bet.fundingSource == 1) {
+          //betting from deposit
+          //add 0 in his betterBalance and add -0.88 in his betterWinloss; 
+          updateBetterWinloss(false, gain, bet.addr);
+          //add 0 in totalUnclaimed
+        } else {
+          //betting from balance
+          //add -1 in his betterBalance and adds -1 in his betterWinloss
+          updateBetterBalance(false,bet.amount, bet.addr);
+          updateBetterWinloss(false,bet.amount, bet.addr);
+          //add 0 in totalUnclaimed
+        }
         setBetResult(period, betIdx, 0);
         Lose(bet.addr, block.timestamp, bet.amount, betIdx, bet.period);
+        IUserRecord(addrUserRecord).updateBet(bet.addr, bet.period, betIdx);
     }
 
     function handleTie(uint256 period, uint256 betIdx) internal {
         //console.log("[sc] ----== handleTie");
         Bet memory bet = getBet(period, betIdx);
         //Pool gets nothing, the governance gets 0.
-        if (bet.fundingSource == 0) {
-            //use user's balance: he gets refund 1,
-        } else {
-            //deposit: he gets refund 1
-            //token.safeTransfer(bet.addr, bet.amount);
-        }
-        totalDeposits = totalDeposits.add(bet.amount);
-        updateBetterDeposit(true, bet.amount, bet.addr);
+//in both betting from balance or deposit
+//add 1 in his betterBalance and add 0 in his betterWinloss; add 0 in totalUnclaimed ...
+        updateBetterBalance(true, bet.amount, bet.addr);
+
         setBetResult(period, betIdx, bet.amount);
         Tie(bet.addr, block.timestamp, bet.amount, betIdx, bet.period);
+        IUserRecord(addrUserRecord).updateBet(bet.addr, bet.period, betIdx);
     }
 
     //-----------------== Pool
@@ -1076,35 +1077,14 @@ contract PriceBettingT1S2 is Administration {
         emit UnStake(msg.sender, amount);
     }
 
-    //-----== Governance
-    uint256 public govBalance;
-
-    event Harvest(address indexed user, uint256 amount, address indexed toAddr);
-
-    function harvest(uint256 amount) public {
-        require(isOnlyGov(), "caller invalid");
-        //console.log("[sc] harvest amount:", amount);
-        require(vault != address(0), "vault cannot be zero address");
-        //require(address(vault).isContract(), "call to non-contract");
-        govBalance = govBalance.sub(amount);
-        token.safeTransfer(vault, amount);
-        emit Harvest(msg.sender, amount, vault);
-    }
-
-    //-----------------==
-    // function calcSharePrice() public view returns(uint256) {
-    //     //Share price = poolBalance in AFI / total shares, as tokenPerShare
-    //     if(totalShares == 0) return 1;//*(10**18);
-    //     return ABDKMathQuadFunc.mulDiv(poolBalance, 1, totalShares);
-    //     //return poolBalance.div(totalShares);
-    // }
     //-----------------== Better
-    uint256 public totalBetAmount;
+    uint256 public totalUnsettledBetAmt;//total unsettled bet amount
     uint256 public totalDeposits;
     uint256 public totalUnclaimed;
     struct Better {
         uint256 deposit;
-        uint256 unclaimed;
+        uint256 balance;
+        int256  winloss;
     }
     mapping(address => Better) public betters;
 
@@ -1121,7 +1101,7 @@ contract PriceBettingT1S2 is Administration {
         )
     {
         return (
-            totalBetAmount,
+            totalUnsettledBetAmt,
             totalDeposits,
             totalUnclaimed,
             maxTotalUnclaimed(),
@@ -1142,15 +1122,27 @@ contract PriceBettingT1S2 is Administration {
         }
     }
 
-    function updateBetterUnclaimed(
+    function updateBetterBalance(
         bool isToAdd,
         uint256 amount,
         address user
     ) private {
         if (isToAdd) {
-            betters[user].unclaimed = betters[user].unclaimed.add(amount);
+            betters[user].balance = betters[user].balance.add(amount);
         } else {
-            betters[user].unclaimed = betters[user].unclaimed.sub(amount);
+            betters[user].balance = betters[user].balance.sub(amount);
+        }
+    }
+
+    function updateBetterWinloss(
+        bool isToAdd,
+        uint256 amount,
+        address user
+    ) private {
+        if (isToAdd) {
+            betters[user].winloss = betters[user].winloss + int256(amount);
+        } else {
+            betters[user].winloss = betters[user].winloss - int256(amount);
         }
     }
 
@@ -1165,7 +1157,6 @@ contract PriceBettingT1S2 is Administration {
     }
 
     event Withdraw(address indexed user, uint256 amount);
-
     function withdraw(uint256 amount) external {
         //console.log("[sc] withdraw amount:", amount);
         updateBetterDeposit(false, amount, msg.sender);
@@ -1178,28 +1169,44 @@ contract PriceBettingT1S2 is Administration {
 
     function claim(uint256 amount) external {
         //console.log("[sc] claim amount:", amount);
-        //when a better claims 18.8, the betterBalance and unclaimed balance are both reduced by 18.8
+        //when a better claims 18.8, the betterBalance and balance balance are both reduced by 18.8
         address user = msg.sender;
-        updateBetterUnclaimed(false, amount, user);
+        updateBetterBalance(false, amount, user);
         totalUnclaimed = totalUnclaimed.sub(amount);
         token.safeTransfer(user, amount);
         emit Claim(user, amount);
     }
 
-    //-----------------== Get Oracle data
-    function getLatestPrice() public view returns (uint256 price) {
-        if (EVMChainID == 100) {
-            price = uint256(
-                AggregatorXDAI(addrPriceFeed).latestAnswer()
-            );
-            //} else if (EVMChainID == 1) {
-            //     // uint80 roundID, int256 price, uint256 startedAt,   uint256 timeStamp, uint80 answeredInRound
+    //-----== Governance
+    uint256 public govBalance;
 
-            //     (uint80 roundID, int256 int256, , , ) =
-            //     price = uint256(int256);
-            //     console.log("roundID: %s, price: %s", roundID, price);
-            //event ErrorEvent(uint80 indexed roundID, int256 price);
-        }
+    event Harvest(address indexed user, uint256 amount, address indexed toAddr);
+
+    function harvest(uint256 amount) public {
+        require(isOnlyGov(), "caller invalid");
+        //console.log("[sc] harvest amount:", amount);
+        require(vault != address(0), "vault cannot be zero address");
+        //require(address(vault).isContract(), "call to non-contract");
+        govBalance = govBalance.sub(amount);
+        token.safeTransfer(vault, amount);
+        emit Harvest(msg.sender, amount, vault);
+    }
+
+    //-----------------==
+    function calcSharePrice() public view returns(uint256) {
+        //Share price = poolBalance in AFI / total shares, as tokenPerShare
+        if(totalShares == 0) return 1;//*(10**18);
+        return ABDKMathQuadFunc.mulDiv(poolBalance, 1, totalShares);
+        //return poolBalance.div(totalShares);
+    }
+
+    function getLatestPrice() public view returns (uint256) {
+        return uint256(
+            AggregatorXDAI(addrPriceFeed).latestAnswer()
+        );
+        //     (uint80 roundID, int256 int256, , , ) =
+        //     price = uint256(AggregatorEthereumV3().latestRoundData);
+        //     console.log("roundID: %s, price: %s", roundID, price);
     }
 }
 
@@ -1274,4 +1281,3 @@ interface AggregatorEthereumV3 {
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  */
-
