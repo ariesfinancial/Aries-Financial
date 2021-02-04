@@ -450,6 +450,7 @@ library SafeERC20 {
     }
 }
 
+//-----------------==
 interface IABDKMathQuadFunc {
     function mulMul(
         uint256 x,
@@ -553,8 +554,7 @@ contract PriceBettingT1S2 is Administration {
     // AggregatorXDAI internal PriceFeed;
     address public addrUserRecord;
 
-    constructor(
-    ) {
+    constructor(){
         token = IERC20(0xc81c785653D97766b995D867CF91F56367742eAC);
         ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
         addrPriceFeed = address(0xC3eFff1B3534Ab5e2Ce626DCF1783b7E83154eF4);
@@ -891,8 +891,6 @@ contract PriceBettingT1S2 is Administration {
         uint256 bettingOutcome; //0 down, 1 up, 2 same, 3 uknown
         uint256 result;//amount*1.88 as total winning amount, and 0 for losing the bet amount, amount*1 as tie returned to the better
         uint256 fundingSource;
-
-
     }*/
     function handleWinning(
         uint256 period,
@@ -980,7 +978,8 @@ interface IUserRecord {
         uint256 staking; //in token unit
     }
 
-    function getDataStaking()
+    //calcSharePrice()
+    function getDataStaking(address userAddr)
         external
         view
         returns (
@@ -996,7 +995,7 @@ interface IUserRecord {
         uint256 effTokenBalance; // poolerBalance
         if (totalShares == 0) {
             sharePrice = 1 * sharePriceUnit;
-            effTokenBalance = poolers[msg.sender].shares;
+            effTokenBalance = poolers[userAddr].shares;
         } else {
             sharePrice = ABDKMathQuadFunc.mulDiv(
                 poolBalance,
@@ -1005,25 +1004,20 @@ interface IUserRecord {
             );
             effTokenBalance = ABDKMathQuadFunc.mulDiv(
                 poolBalance,
-                poolers[msg.sender].shares,
+                poolers[userAddr].shares,
                 totalShares
             );
         }
-        //int256 winloseBalance = effTokenBalance - poolers[msg.sender].staking;
+        //int256 winloseBalance = effTokenBalance - poolers[userAddr].staking;
         return (
             poolBalance,
             totalShares,
             sharePrice,
-            poolers[msg.sender],
+            poolers[userAddr],
             effTokenBalance,
-            int256(effTokenBalance) - int256(poolers[msg.sender].staking)
+            int256(effTokenBalance) - int256(poolers[userAddr].staking)
         );
     }
-
-    // function effTokenBalances() external view returns (uint256 effTokenBalance, uint256 winloseBalance) {
-    //     effTokenBalance = ABDKMathQuadFunc.mulDiv(poolBalance, poolers[msg.sender].shares, totalShares);
-    //     winloseBalance = effTokenBalance - poolers[msg.sender].staking;
-    // }
 
     function updatePooler(bool isToAdd, uint256 amount) private {
         uint256 sharesNew;
@@ -1088,7 +1082,7 @@ interface IUserRecord {
     }
     mapping(address => Better) public betters;
 
-    function getDataBetting()
+    function getDataBetting(address userAddr)
         external
         view
         returns (
@@ -1106,7 +1100,7 @@ interface IUserRecord {
             totalUnclaimed,
             maxTotalUnclaimed(),
             govBalance,
-            betters[msg.sender]
+            betters[userAddr]
         );
     }
 
@@ -1192,14 +1186,6 @@ interface IUserRecord {
         emit Harvest(msg.sender, amount, vault);
     }
 
-    //-----------------==
-    function calcSharePrice() public view returns(uint256) {
-        //Share price = poolBalance in AFI / total shares, as tokenPerShare
-        if(totalShares == 0) return 1;//*(10**18);
-        return ABDKMathQuadFunc.mulDiv(poolBalance, 1, totalShares);
-        //return poolBalance.div(totalShares);
-    }
-
     function getLatestPrice() public view returns (uint256) {
         return uint256(
             AggregatorXDAI(addrPriceFeed).latestAnswer()
@@ -1267,7 +1253,6 @@ interface AggregatorEthereumV3 {
         );
 }
 /*
-
 */
 /**
  * MIT License
