@@ -1,6 +1,11 @@
+/**
+ *Submitted for verification at Etherscan.io on 2020-12-26
+*/
 
 //"SPDX-License-Identifier: MIT"
+// File: @openzeppelin/contracts/math/Math.sol
 pragma solidity ^0.7.5;
+
 //import "hardhat/console.sol";
 
 /**
@@ -608,6 +613,8 @@ library SafeERC20 {
 abstract contract IRewardDistributionRecipient is Ownable {
     address public rewardDistribution; //added "public"
 
+    function notifyRewardAmount(uint256 reward) external virtual;
+
     modifier onlyRewardDistribution() {
         require(
             _msgSender() == rewardDistribution,
@@ -633,64 +640,43 @@ abstract contract IRewardDistributionRecipient is Ownable {
         external
         onlyOwner
     {
-        //console.log("[sc] setRewardDistribution... ");
+        //console.log("sc setRewardDistribution... ");
         rewardDistribution = _rewardDistribution;
     }
 }
+
+
 
 contract BonusReward is IRewardDistributionRecipient {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     IERC20 public erc20RewardToken;
-    uint256 public dailyLimitDefault = 1000 * (10**18);
-    uint256 public constant CLAIMDURATION = 1 days;
-
-    mapping(address => uint256) private rewardsClaimed;
-    mapping(address => uint256) private rewardBalance;
-    mapping(address => uint256) private dailyLimit;
-    mapping(address => uint256) private lastClaimedTime;
+    uint256 public lastUpdateTime;
+    mapping(address => uint256) public rewardsClaimed;
+    mapping(address => uint256) public rewardBalance;
 
     event RewardPaid(address indexed user, uint256 reward);
 
+    function getBlockTimestamp() public view returns (uint256) {
+        return (block.timestamp);
+    }
+
     constructor(address _rewardToken) {
-        //console.log("[sc] deploying rewards ctrt");
+        //console.log("sc deploying rewards ctrt");
         erc20RewardToken = IERC20(_rewardToken);
     }
 
-    function getRewardTokenBalance(address addr) public view returns (uint256) {
-        return erc20RewardToken.balanceOf(addr);
-    }
+    function notifyRewardAmount(uint256 reward) public override {
 
-    function getRewardTokenBalanceOnContract() public view returns (uint256) {
-        return erc20RewardToken.balanceOf(address(this));
-    }
-
-    function claimRewardCheck(address user) public view returns (bool, uint256, bool, uint256) {
-        return
-            (block.timestamp >= lastClaimedTime[user].add(CLAIMDURATION), block.timestamp, getRewardTokenBalanceOnContract() >= rewardBalance[user], rewardBalance[user]);
     }
 
     function claimReward() public {
-        (bool isTimeOk, uint256 blockime, bool isRewardsSufficient, uint256 reward) = claimRewardCheck(msg.sender);
-        console.log("[sc] isTimeToClaim: %s, isRewardSufficient: %s, user rewards: %s", isTimeOk, isRewardsSufficient, reward);
-        //blockime
-
-        uint256 dailyLimitUser;
-        if (dailyLimit[msg.sender] == 0) {
-            dailyLimitUser = dailyLimitDefault;
-        } else {
-            dailyLimitUser = dailyLimit[msg.sender];
-        }
-        if (reward > dailyLimitUser) {
-            reward = dailyLimitUser;
-        }
-
-        //require(reward > 0 && isTimeOk && isRewardSufficient(msg.sender), "check failed");
-        if (reward > 0 && isTimeOk && isRewardsSufficient) {
-            rewardBalance[msg.sender] = rewardBalance[msg.sender].sub(reward);
+        uint256 reward = rewardBalance[msg.sender];
+        if (reward > 0) {
+            //console.log("sc reward token earned:", reward);
+            rewardBalance[msg.sender] = 0;
             erc20RewardToken.safeTransfer(msg.sender, reward);
             rewardsClaimed[msg.sender] = rewardsClaimed[msg.sender].add(reward);
-            lastClaimedTime[msg.sender] = blockime;
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -701,21 +687,6 @@ contract BonusReward is IRewardDistributionRecipient {
 
     function getRewardBalance(address user) public view returns (uint256) {
         return rewardBalance[user];
-    }
-
-    function getDailyLimit(address user) public view returns (uint256) {
-        return dailyLimit[user];
-    }
-
-    function setDailyLimit(address user, uint256 amount)
-        public
-        onlyRewardDistribution
-    {
-        dailyLimit[user] = amount;
-    }
-
-    function getLastClaimedTime(address user) public view returns (uint256) {
-        return lastClaimedTime[user];
     }
 
     function reduceRewardBalance(address user, uint256 amount)
@@ -731,11 +702,6 @@ contract BonusReward is IRewardDistributionRecipient {
     {
         rewardBalance[user] = rewardBalance[user].add(amount);
     }
-
-    function getBlockTimestamp() public view returns (uint256) {
-        return (block.timestamp);
-    }
-
 }
 
 /**
