@@ -1,59 +1,42 @@
 /**
- *Submitted for verification at BscScan.com on 2021-02-21
+ *Submitted for verification at BscScan.com on 2021-02-25
 */
 
-// SPDX-License-Identifier: MIT
-// AND GPL-3.0-or-later
-pragma solidity 0.7.5;
-// includes Openzeppelin 3.3.0 contracts:
-// ... Context -> Ownable
-// ... SafeMath, Address, SafeERC20
-// ... IERC20, ERC20(aka ERC20Detailed),
-//import "hardhat/console.sol";
+//"SPDX-License-Identifier: MIT"
+pragma solidity ^0.8.1;
+//pragma abicoder v2;
 
-// File: @openzeppelin/contracts/GSN/Context.sol
+//import "./openzeppelinERC20ITF.sol";
+//sol800
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
+    function _msgSender() internal view virtual returns (address) {
         return msg.sender;
     }
 
-    // function _msgData() internal view virtual returns (bytes memory) {
-    //     this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-    //     return msg.data;
-    // }
+    function _msgData() internal view virtual returns (bytes calldata) {
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        return msg.data;
+    }
 }
 
-// File: @openzeppelin/contracts/access/Ownable.sol
-//import "../GSN/Context.sol";
+//sol800
 abstract contract Ownable is Context {
     address private _owner;
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() {
+    constructor () {
         address msgSender = _msgSender();
         _owner = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
     }
 
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
+    function owner() public view virtual returns (address) {
         return _owner;
     }
 
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -63,119 +46,34 @@ abstract contract Ownable is Context {
     }
 
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(
-            newOwner != address(0),
-            "Ownable: new owner is the zero address"
-        );
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
 }
 
-// File: @openzeppelin/contracts/token/ERC20/IERC20.sol
+
+//sol8.0.0
 interface IERC20 {
     function totalSupply() external view returns (uint256);
 
     function balanceOf(address account) external view returns (uint256);
 
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function approve(address spender, uint256 amount) external returns (bool);
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
-// File: @openzeppelin/contracts/math/SafeMath.sol
-library SafeMath {
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
-    function sub(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    // function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-    //     // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-    //     // benefit is lost if 'b' is also tested.
-    //     // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-    //     if (a == 0) {
-    //         return 0;
-    //     }
-
-    //     uint256 c = a * b;
-    //     require(c / a == b, "SafeMath: multiplication overflow");
-
-    //     return c;
-    // }
-
-    // function div(uint256 a, uint256 b) internal pure returns (uint256) {
-    //     return div(a, b, "SafeMath: division by zero");
-    // }
-
-    // function div(
-    //     uint256 a,
-    //     uint256 b,
-    //     string memory errorMessage
-    // ) internal pure returns (uint256) {
-    //     require(b > 0, errorMessage);
-    //     uint256 c = a / b;
-    //     // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-    //     return c;
-    // }
-
-    // function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-    //     return mod(a, b, "SafeMath: modulo by zero");
-    // }
-
-    // function mod(
-    //     uint256 a,
-    //     uint256 b,
-    //     string memory errorMessage
-    // ) internal pure returns (uint256) {
-    //     require(b != 0, errorMessage);
-    //     return a % b;
-    // }
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
 
-// File: @openzeppelin/contracts/utils/Address.sol
-//pragma solidity >=0.6.2 <0.8.0;
-
+//sol8.0.0
 library Address {
     function isContract(address account) internal view returns (bool) {
         // This method relies on extcodesize, which returns 0 for contracts in
@@ -184,138 +82,37 @@ library Address {
 
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
-        assembly {
-            size := extcodesize(account)
-        }
+        assembly { size := extcodesize(account) }
         return size > 0;
     }
 
-    /**
-     * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
-     * `recipient`, forwarding all available gas and reverting on errors.
-     *
-     * https://eips.ethereum.org/EIPS/eip-1884[EIP1884] increases the gas cost
-     * of certain opcodes, possibly making contracts go over the 2300 gas limit
-     * imposed by `transfer`, making them unable to receive funds via
-     * `transfer`. {sendValue} removes this limitation.
-     *
-     * https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/[Learn more].
-     *
-     * IMPORTANT: because control is transferred to `recipient`, care must be
-     * taken to not create reentrancy vulnerabilities. Consider using
-     * {ReentrancyGuard} or the
-     * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
-     */
+    //function sendValue(address payable recipient, uint256 amount) internal {...}
+    
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+      return functionCall(target, data, "Address: low-level call failed");
+    }
 
-    // function sendValue(address payable recipient, uint256 amount) internal {
-    //     require(
-    //         address(this).balance >= amount,
-    //         "Address: insufficient balance"
-    //     );
-
-    //     // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
-    //     (bool success, ) = recipient.call{value: amount}("");
-    //     require(
-    //         success,
-    //         "Address: unable to send value, recipient may have reverted"
-    //     );
-    // }
-
-    /**
-     * @dev Performs a Solidity function call using a low level `call`. A
-     * plain`call` is an unsafe replacement for a function call: use this
-     * function instead.
-     *
-     * If `target` reverts with a revert reason, it is bubbled up by this
-     * function (like regular Solidity function calls).
-     *
-     * Returns the raw returned data. To convert to the expected return value,
-     * use https://solidity.readthedocs.io/en/latest/units-and-global-variables.html?highlight=abi.decode#abi-encoding-and-decoding-functions[`abi.decode`].
-     *
-     * Requirements:
-     *
-     * - `target` must be a contract.
-     * - calling `target` with `data` must not revert.
-     *
-     * _Available since v3.1._
-     */
-    // function functionCall(address target, bytes memory data)
-    //     internal
-    //     returns (bytes memory)
-    // {
-    //     return functionCall(target, data, "Address: low-level call failed");
-    // }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`], but with
-     * `errorMessage` as a fallback revert reason when `target` reverts.
-     *
-     * _Available since v3.1._
-     */
-    function functionCall(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
+    function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
         return functionCallWithValue(target, data, 0, errorMessage);
     }
 
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
-     * but also transferring `value` wei to `target`.
-     *
-     * Requirements:
-     *
-     * - the calling contract must have an ETH balance of at least `value`.
-     * - the called Solidity function must be `payable`.
-     *
-     * _Available since v3.1._
-     */
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value
-    ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                target,
-                data,
-                value,
-                "Address: low-level call with value failed"
-            );
+    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
     }
 
-    /**
-     * @dev Same as {xref-Address-functionCallWithValue-address-bytes-uint256-}[`functionCallWithValue`], but
-     * with `errorMessage` as a fallback revert reason when `target` reverts.
-     *
-     * _Available since v3.1._
-     */
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        require(
-            address(this).balance >= value,
-            "Address: insufficient balance for call"
-        );
+    function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
+        require(address(this).balance >= value, "Address: insufficient balance for call");
         require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) =
-            target.call{value: value}(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
 // functionStaticCall x2
+// functionDelegateCall x2
 
-    function _verifyCallResult(
-        bool success,
-        bytes memory returndata,
-        string memory errorMessage
-    ) private pure returns (bytes memory) {
+    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
         } else {
@@ -335,132 +132,76 @@ library Address {
     }
 }
 
-// File: @openzeppelin/contracts/token/ERC20/SafeERC20.sol
-// pragma solidity >=0.6.0 <0.8.0;
-// import "./IERC20.sol";
-// import "../../math/SafeMath.sol";
-// import "../../utils/Address.sol";
-
+//---------------------==
+//sol8.0.0
 library SafeERC20 {
-    using SafeMath for uint256;
     using Address for address;
 
-    function safeTransfer(
-        IERC20 token,
-        address to,
-        uint256 value
-    ) internal {
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transfer.selector, to, value)
-        );
+    function safeTransfer(IERC20 token, address to, uint256 value) internal {
+        _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
     }
 
-    function safeTransferFrom(
-        IERC20 token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transferFrom.selector, from, to, value)
-        );
+    function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
+        _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
     }
 
-    /**
-     * @dev Deprecated. This function has issues similar to the ones found in
-     * {IERC20-approve}, and its usage is discouraged.
-     *
-     * Whenever possible, use {safeIncreaseAllowance} and
-     * {safeDecreaseAllowance} instead.
-     */
-    function safeApprove(
-        IERC20 token,
-        address spender,
-        uint256 value
-    ) internal {
-        // safeApprove should only be called when setting an initial allowance,
-        // or when resetting it to zero. To increase and decrease it, use
-        // 'safeIncreaseAllowance' and 'safeDecreaseAllowance'
-        // solhint-disable-next-line max-line-length
-        require(
-            (value == 0) || (token.allowance(address(this), spender) == 0),
-            "SafeERC20: approve from non-zero to non-zero allowance"
-        );
-        _callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.approve.selector, spender, value)
-        );
-    }
-
-    // function safeIncreaseAllowance(
-    //     IERC20 token,
-    //     address spender,
-    //     uint256 value
-    // ) internal {
-    //     uint256 newAllowance =
-    //         token.allowance(address(this), spender).add(value);
-    //     _callOptionalReturn(
-    //         token,
-    //         abi.encodeWithSelector(
-    //             token.approve.selector,
-    //             spender,
-    //             newAllowance
-    //         )
+    // function safeApprove(IERC20 token, address spender, uint256 value) internal {
+    //     require((value == 0) || (token.allowance(address(this), spender) == 0),
+    //         "SafeERC20: approve from non-zero to non-zero allowance"
     //     );
+    //     _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, value));
     // }
 
-    // function safeDecreaseAllowance(
-    //     IERC20 token,
-    //     address spender,
-    //     uint256 value
-    // ) internal {
-    //     uint256 newAllowance =
-    //         token.allowance(address(this), spender).sub(
-    //             value,
-    //             "SafeERC20: decreased allowance below zero"
-    //         );
-    //     _callOptionalReturn(
-    //         token,
-    //         abi.encodeWithSelector(
-    //             token.approve.selector,
-    //             spender,
-    //             newAllowance
-    //         )
-    //     );
+    // function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {
+    //     uint256 newAllowance = token.allowance(address(this), spender) + value;
+    //     _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
     // }
 
-    /**
-     * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement
-     * on the return value: the return value is optional (but if data is returned, it must not be false).
-     * @param token The token targeted by the call.
-     * @param data The call data (encoded using abi.encode or one of its variants).
-     */
+    // function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
+    //     unchecked {
+    //         uint256 oldAllowance = token.allowance(address(this), spender);
+    //         require(oldAllowance >= value, "SafeERC20: decreased allowance below zero");
+    //         uint256 newAllowance = oldAllowance - value;
+    //         _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
+    //     }
+    // }
+
     function _callOptionalReturn(IERC20 token, bytes memory data) private {
-        // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
-        // we're implementing it ourselves. We use {Address.functionCall} to perform this call, which verifies that
-        // the target address contains contract code and also asserts for success in the low-level call.
-
-        bytes memory returndata =
-            address(token).functionCall(
-                data,
-                "SafeERC20: low-level call failed"
-            );
-        if (returndata.length > 0) {
-            // Return data is optional
+        bytes memory returndata = address(token).functionCall(data, "SafeERC20: low-level call failed");
+        if (returndata.length > 0) { // Return data is optional
             // solhint-disable-next-line max-line-length
-            require(
-                abi.decode(returndata, (bool)),
-                "SafeERC20: ERC20 operation did not succeed"
-            );
+            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
         }
     }
 }
+/**
+    function compare( string memory a, string memory b) public pure returns(bool) { return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b)); 
+*/
 
-pragma abicoder v2;
-//import "./openzeppelinERC20ITF.sol";
-//import "./signedSafeMath.sol";
+
+library SafeMath {
+    // function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    //     uint256 c = a + b;
+    //     require(c >= a, "SafeMath: addition overflow");
+
+    //     return c;
+    // }
+
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+}
+
 //import "hardhat/console.sol";
 
 interface IABDKMathQuadFunc {
@@ -527,9 +268,8 @@ abstract contract Administration is Ownable {
     }
 }
 
-contract PriceBettingT1S2 is Administration {
+contract PriceBetting is Administration {
     using SafeMath for uint256;
-    //using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -560,7 +300,7 @@ contract PriceBettingT1S2 is Administration {
     uint256 public idxEP2 = 0;
     uint256 public idxEP1 = 0;
 
-    uint256 public period1 = 300;
+    uint256 public period1 = 900;
     uint256 public period2 = 1800;
     uint256 public maxBetAmt = 5 *(10**(18));
     uint256 public maxBetsToClear = 10;
@@ -573,27 +313,30 @@ contract PriceBettingT1S2 is Administration {
     mapping(uint256 => Bet) public betsP2;
     mapping(uint256 => Bet) public betsP1;
 
-    IERC20 public token;
+    address public addrToken;
+    address public addrPriceFeedBTC;
+    address public addrPriceFeedETH;
+    address public addrUserRecord;
     IABDKMathQuadFunc public ABDKMathQuadFunc;
 
-    address public addrPriceFeed;
-    address public addrUserRecord;
+    constructor() {
+      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
+      addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
 
-    constructor(
-    ) {
-      token = IERC20(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
-      ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
-      addrPriceFeed = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
+      addrPriceFeedBTC = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
+      addrPriceFeedETH = address(0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
     } 
     /*-----------== BSC
-      token = IERC20(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
-      ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
-      addrPriceFeed = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
+      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
+      addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
+
+      addrPriceFeedBTC = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
+      addrPriceFeedETH = address(0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
     
     -------------== XDAI
-      token = IERC20(0xc81c785653D97766b995D867CF91F56367742eAC);
       ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
-      addrPriceFeed = address(0xC3eFff1B3534Ab5e2Ce626DCF1783b7E83154eF4);
+      addrToken = address(0xc81c785653D97766b995D867CF91F56367742eAC);
+      addrPriceFeedBTC = address(0xC3eFff1B3534Ab5e2Ce626DCF1783b7E83154eF4);
      */
 
     //--------------------== onlyAdmin settings
@@ -625,25 +368,27 @@ contract PriceBettingT1S2 is Administration {
     bool public bettingStatus = true;
  */
       } else if(option == 106){
-        require(uintNum > 0 && uintNum <= 100, "ratio invalid");
+        require(uintNum > 0 && uintNum <= 100,"ratio invalid");
         profitRatio = uintNum;
 
       } else if(option == 107){
-        require(uintNum > 0 && uintNum <= 100, "ratio invalid");
+        require(uintNum > 0 && uintNum <= 100,"ratio invalid");
         maxUnclaimedPoolRatio = uintNum;
 
       } else if(option == 108){
         require(uintNum > 0, "ratio invalid");
         sharePriceUnit = uintNum;
 
+      } else if(option == 997){//MUST clear all bets before changing token address!!!
+        require(address(addr).isContract(),"invalid contract");
+        addrToken = addr;
+      } else if(option == 998){
+        require(address(addr).isContract(),"invalid contract");
+        addrUserRecord = addr;
       } else if(option == 999){
         //require(address(token).isContract(), "call to non-contract");
         require(addr != address(0), "vault cannot be zero address");
         vault = addr;
-
-      } else if(option == 998){
-        require(address(addr).isContract(), "invalid contract");
-        addrUserRecord = addr;
       }
       emit SetSettings(option, addr, _bool, uintNum);
     }
@@ -655,12 +400,9 @@ contract PriceBettingT1S2 is Administration {
     }
 
     function enterBetCheck(
-        uint256 amount,
-        uint256 period,
-        uint256 bettingOutcome,
-        uint256 fundingSource
-    )
-        public view
+        uint256 amount, uint256 period, uint256 assetPair,
+        uint256 bettingOutcome, uint256 fundingSource
+    ) public view
         returns (
             bool[] memory bools,
             uint256[] memory uints,
@@ -668,16 +410,18 @@ contract PriceBettingT1S2 is Administration {
             bool boolOut
         )
     {
-        bools = new bool[](9);
-        uints = new uint256[](7);
-        uintInputs = new uint256[](4);
+        bools = new bool[](10);
+        uints = new uint256[](6);
+        uintInputs = new uint256[](5);
         
         uintInputs[0] = amount;
         uintInputs[1] = period;
         uintInputs[2] = bettingOutcome;
         uintInputs[3] = fundingSource;
+        uintInputs[4] = assetPair;
+
         address user = msg.sender;
-        uint256 allowed = token.allowance(user, address(this));
+        uint256 allowed = IERC20(addrToken).allowance(user, address(this));
         bools[0] = amount >= 100 && amount <= maxBetAmt;
         //amount: 0 invalid, 1 ~ 99 reserved for errCode -99~-1 & 1 ~ 100*profitRatio
         //... use errCode -99 ~ -1
@@ -699,8 +443,9 @@ contract PriceBettingT1S2 is Administration {
         bools[5] = amount <= tokenBalanceAtFundingSrc;
         bools[6] = amount <= maxBetAmt;
         bools[8] = bettingStatus;
+        bools[9] = assetPair < 2;
 
-        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8];
+        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8] && bools[9];
 
         uints[0] = allowed;
         uints[1] = tokenBalanceAtFundingSrc;
@@ -708,22 +453,14 @@ contract PriceBettingT1S2 is Administration {
         uints[3] = betters[user].balance;
         uints[4] = maxBetAmt;
         uints[5] = maxTotalUnclaimed;
-        uints[6] = getLatestPrice();
     }
 
     function enterBet(
-        uint256 amount,
-        uint256 period,
-        uint256 bettingOutcome,
-        uint256 fundingSource
+        uint256 amount, uint256 period, uint256 assetPair,
+        uint256 bettingOutcome, uint256 fundingSource
     ) external {
         (, , ,bool boolOut) =
-            enterBetCheck(
-                amount,
-                period,
-                bettingOutcome,
-                fundingSource
-            );
+            enterBetCheck(amount, period, assetPair, bettingOutcome, fundingSource);
         require(boolOut, "invalid input detected");
 
         clearBets(period);
@@ -735,7 +472,7 @@ contract PriceBettingT1S2 is Administration {
 
         } else {
           //console.log("[sc] ----== bet from wallet");
-          token.safeTransferFrom(user, address(this), amount);
+          IERC20(addrToken).safeTransferFrom(user, address(this), amount);
         }
 
         Bet memory bet;
@@ -743,27 +480,28 @@ contract PriceBettingT1S2 is Administration {
         bet.betAt = block.timestamp;
         bet.amount = amount;
         bet.period = period;
-        bet.priceAtBet = getLatestPrice();
+        bet.assetPair = assetPair;
+        bet.priceAtBet = getLatestPrice(assetPair);
         bet.bettingOutcome = bettingOutcome;
         bet.fundingSource = fundingSource;
         bet.result = -1;
 
-        //totalUnsettledBetAmt = totalUnsettledBetAmt.add(amount);
+        //totalUnsettledBetAmt = totalUnsettledBetAmt + amount);
         //console.log("[sc] bet:", bet);
 
-        if (period == period2) {
-            idxEP2 = idxEP2.add(1);
-            betsP2[idxEP2] = bet;
-            IUserRecord(addrUserRecord).addBet(user, period, idxEP2);
-            if (idxEP2 == 1) {
-                idxSP2 = 1;
-            }
-        } else if (period == period1) {
-            idxEP1 = idxEP1.add(1);
+        if (period == period1) {
+            idxEP1 = idxEP1 + 1;
             betsP1[idxEP1] = bet;
             IUserRecord(addrUserRecord).addBet(user, period, idxEP1);
             if (idxEP1 == 1) {
                 idxSP1 = 1;
+            }
+        } else if (period == period2) {
+            idxEP2 = idxEP2 + 1;
+            betsP2[idxEP2] = bet;
+            IUserRecord(addrUserRecord).addBet(user, period, idxEP2);
+            if (idxEP2 == 1) {
+                idxSP2 = 1;
             }
         }
     }
@@ -774,6 +512,7 @@ contract PriceBettingT1S2 is Administration {
         uint256 betAt; //time this bet was recorded
         uint256 amount; //amount of betting
         uint256 period; //in seconds
+        uint256 assetPair; //0 BTC, 1 ETH
         uint256 priceAtBet;
         uint256 bettingOutcome; //0 down, 1 up, 2 same, 3 uknown
         uint256 fundingSource; //0 balance, 1 deposit
@@ -801,33 +540,33 @@ contract PriceBettingT1S2 is Administration {
         } else if (period == period1) {
             idxStart = idxSP1;
             idxEnd = idxEP1;
-        }
+        }//if changing period before all bets are cleared, this bet will never be clear!!!
         if (idxStart > 0 && idxEnd >= idxStart) {
             //console.log("[sc] betIdx start & end good");
             for (
                 uint256 betIdx = idxStart;
-                betIdx < idxStart.add(maxBetsToClear);
+                betIdx < idxStart + maxBetsToClear;
                 betIdx++
             ) {
                 //console.log("[sc] ---------== loop");
                 //console.log("[sc] betIdx: %s, period: %s", betIdx, period);
                 Bet memory bet = getBet(period, betIdx);
 
-                //console.log("bet:: betAt: %s, blockTime: %s", bet.betAt, block.timestamp);
+               // console.log("bet:: betAt: %s, blockTime: %s", bet.betAt, block.timestamp);
                 if (bet.betAt == 0) {
                     //console.log("[sc] ----== all bets have been settled");
                     break;
                 }
-                if (block.timestamp < bet.betAt.add(period)) {
-                    //console.log("[sc] ----== bets are waiting");
+                if (block.timestamp < bet.betAt + period) {
+                  //console.log("[sc] ----== bets are waiting");
                     break;
                 }
                 settle(period, betIdx);
                 if (period == period2) {
-                    idxSP2 = idxSP2.add(1);
+                    idxSP2 += 1;
                 }
                 if (period == period1) {
-                    idxSP1 = idxSP1.add(1);
+                    idxSP1 += 1;
                 }
             }
         }
@@ -835,30 +574,30 @@ contract PriceBettingT1S2 is Administration {
 
     // function calcAmounts(uint256 amount) public view returns (uint256 gain, uint256 gaPrin, uint256 govGain) {
     //     gain = ABDKMathQuadFunc.mulDiv(amount, profitRatio, 100);//0.88
-    //     gaPrin = amount.add(gain);//1.88
-    //     govGain = amount.sub(gain);//0.12
+    //     gaPrin = amount + gain;//1.88
+    //     govGain = amount - gain;//0.12
     // }
     function settle(uint256 period, uint256 betIdx
     ) private {
-        uint256 price = getLatestPrice();
         Bet memory bet = getBet(period, betIdx);
+        uint256 price = getLatestPrice(bet.assetPair);
         //console.log("[sc] settle(): betIdx: %s, priceNow: %s", betIdx, price);
         //console.log("[sc] priceAtBet: %s, bettingOutcome: %s",bet.priceAtBet, bet.bettingOutcome);
 
         //(uint256 gain, uint256 gaPrin, uint256 govGain) = calcAmounts(bet.amount);
         uint256 gain = ABDKMathQuadFunc.mulDiv(bet.amount, profitRatio, 100); //0.88
-        uint256 gaPrin = bet.amount.add(gain); //1.88
+        uint256 gaPrin = bet.amount + gain; //1.88
         uint256 govGain = bet.amount.sub(gain); //0.12
 
         //console.log("bet.amount", bet.amount, gain, gaPrin);
 
-        //totalUnsettledBetAmt = totalUnsettledBetAmt.sub(bet.amount);
+        //totalUnsettledBetAmt = totalUnsettledBetAmt - bet.amount);
 
         if (price < bet.priceAtBet) {
           //the govBalance gets 0.12
-          govBalance = govBalance.add(govGain);
+          govBalance += govGain;
           if (bet.bettingOutcome == 0) {
-              //console.log("[sc] ----== Win1: price down");
+             // console.log("[sc] ----== Win1: price down");
               handleWinning(period, betIdx, gain, gaPrin, price);
           } else {
               //console.log("[sc] ----== Lose1: price down");
@@ -866,12 +605,12 @@ contract PriceBettingT1S2 is Administration {
           }
         } else if (price > bet.priceAtBet) {
           //the govBalance gets 0.12
-          govBalance = govBalance.add(govGain);
+          govBalance += govGain;
           if (bet.bettingOutcome == 1) {
               //console.log("[sc] ----== Win2: price up");
               handleWinning(period, betIdx, gain, gaPrin, price);
           } else {
-              //console.log("[sc] ----== Lose2: price up");
+             // console.log("[sc] ----== Lose2: price up");
               handleLosing(period, betIdx, gain, price);
           }
         } else {
@@ -885,6 +624,7 @@ contract PriceBettingT1S2 is Administration {
         uint256 betAt; //time this bet was recorded
         uint256 amount; //amount of betting
         uint256 period; //in seconds
+        uint256 tokenPair; //0 BTC, 1 ETH
         uint256 priceAtBet;
         uint256 bettingOutcome; //0 down, 1 up, 2 same, 3 uknown
         uint256 settledAt; //time this bet was settled
@@ -903,9 +643,9 @@ contract PriceBettingT1S2 is Administration {
         setSharePrice();//after poolBalance updated
 
         if (bet.fundingSource == 0) {//from balance
-          totalUnclaimed = totalUnclaimed.add(gain);
+          totalUnclaimed += gain;
         } else {//from wallet
-          totalUnclaimed = totalUnclaimed.add(gaPrin);
+          totalUnclaimed += gaPrin;
         }
         updateBetterBalance(true, gaPrin, bet.addr);
         updateBetterWinloss(true, gain, bet.addr);
@@ -927,7 +667,7 @@ interface IUserRecord {
     ) internal {
         //console.log("[sc] ----== handleLosing:", period, betIdx, gain);
         Bet memory bet = getBet(period, betIdx);
-        poolBalance = poolBalance.add(gain);
+        poolBalance += gain;
         // Pool gets 0.88
         setSharePrice();//after poolBalance updated
 
@@ -953,7 +693,7 @@ interface IUserRecord {
         if (bet.fundingSource == 0) {//from balance
           //add 0 in totalUnclaimed
         } else {//from wallet
-          totalUnclaimed = totalUnclaimed.add(bet.amount);
+          totalUnclaimed += bet.amount;
         }
         //add 1 in his balance for both cases above
         updateBetterBalance(true, bet.amount, bet.addr);
@@ -988,6 +728,7 @@ interface IUserRecord {
             betsP1[betIdx].settledPrice = settledPrice;
         }
     }
+
     //-----------------== Pool
     uint256 public sharePriceUnit = 1000;//1*(10**9);
     uint256 public sharePrice = sharePriceUnit;
@@ -1003,7 +744,7 @@ interface IUserRecord {
     function stake(uint256 amount) external {
       require(amount > 0, "amount invalid");
       //console.log("[solc] stake amount:", amount);
-      token.safeTransferFrom(msg.sender, address(this), amount);
+      IERC20(addrToken).safeTransferFrom(msg.sender, address(this), amount);
 
       //to   stake 100 AFI => issues  100/sharePrice shares, +100 AFI in poolBalance
       updatePooler(true, amount);
@@ -1013,8 +754,8 @@ interface IUserRecord {
     function updatePooler(bool isToAdd, uint256 amount) private {
         uint256 oldTotalShares = totalShares;
         if (isToAdd) {
-          poolBalance = poolBalance.add(amount);
-          poolers[msg.sender].staking = poolers[msg.sender].staking.add(amount);
+          poolBalance += amount;
+          poolers[msg.sender].staking += amount;
         } else {
           poolBalance = poolBalance.sub(amount);
           poolers[msg.sender].staking = poolers[msg.sender].staking.sub(amount);
@@ -1025,7 +766,7 @@ interface IUserRecord {
 // newTotalShares = new_poolBalance / shareprice
 // newShares = newTotalShares - oldTotalShares
 // add newShares to this pooler
-          poolers[msg.sender].shares = poolers[msg.sender].shares.add(totalShares.sub(oldTotalShares));
+          poolers[msg.sender].shares += (totalShares.sub(oldTotalShares));
 
         } else {
 // newTotalShares = new_poolBalance / shareprice ... v
@@ -1041,7 +782,7 @@ interface IUserRecord {
       (, uint256 amount, bool[] memory bools) = checkUnstake(msg.sender, _amount);
       require(bools[0], "invalid input");
       updatePooler(false, amount);
-      token.safeTransfer(msg.sender, amount);
+      tokenSafeTransfer(msg.sender, amount);
       emit Unstake(msg.sender, amount);
     }
     function checkUnstake(address user, uint256 _amount)
@@ -1100,7 +841,10 @@ interface IUserRecord {
     }
 
     function getTokenBalance(address addr) public view returns (uint256){
-          return token.balanceOf(addr);
+          return IERC20(addrToken).balanceOf(addr);
+    }
+    function tokenSafeTransfer(address _to, uint256 amount) private {
+        IERC20(addrToken).safeTransfer(_to, amount);
     }
 
     function getDataBetting(address user) external view returns (uint256, uint256, uint256, Better memory, uint256, uint256, uint256){
@@ -1110,7 +854,7 @@ interface IUserRecord {
 
     function updateBetterBalance(bool isToAdd, uint256 amount, address user) private {
         if (isToAdd) {
-            betters[user].balance = betters[user].balance.add(amount);
+            betters[user].balance += amount;
         } else {
             betters[user].balance = betters[user].balance.sub(amount);
         }
@@ -1118,28 +862,24 @@ interface IUserRecord {
 
     function updateBetterWinloss(bool isToAdd, uint256 amount, address user) private {
         if (isToAdd) {
-            betters[user].winloss = betters[user].winloss + int256(amount);
+            betters[user].winloss += int256(amount);
         } else {
-            betters[user].winloss = betters[user].winloss - int256(amount);
+            betters[user].winloss -= int256(amount);
         }
     }
 
     // use getDataBetting() as checker function 
     event Withdraw(address indexed user, uint256 amount);
     function withdraw(uint256 _amount) external {
-        //console.log("[sc] withdraw amount", amount, better[user].balance, totalUnclaimed, getTokenBalance());
-        //(, , , uint256 amount, bool boolOut) = withdrawCheck(_amount);
-        //require(boolOut, "input invalid");
-        address user = msg.sender;
+        //console.log("[sc] withdraw amount", amount, better[msg.sender].balance, totalUnclaimed, getTokenBalance()); (, , , uint256 amount, bool boolOut) = withdrawCheck(_amount); require(boolOut, "input invalid");
         uint256 amount = _amount;
         if(_amount == 0){
-          amount = betters[user].balance;// < totalUnclaimed ? betters[user].balance : totalUnclaimed;
+          amount = betters[msg.sender].balance;// < totalUnclaimed ? betters[msg.sender].balance : totalUnclaimed;
         }//a < b ? a : b;
-        updateBetterBalance(false, amount, user);
+        updateBetterBalance(false, amount, msg.sender);
         totalUnclaimed = totalUnclaimed.sub(amount);
-
-        token.safeTransfer(user, amount);
-        emit Withdraw(user, amount);
+        tokenSafeTransfer(msg.sender, amount);
+        emit Withdraw(msg.sender, amount);
     }
 
     //-----== govBalance
@@ -1157,13 +897,19 @@ interface IUserRecord {
           amount = govBalance;
         }
         govBalance = govBalance.sub(amount);
-        token.safeTransfer(vault, amount);
+        tokenSafeTransfer(vault, amount);
         emit Harvest(msg.sender, amount, vault);
     }
 
-    function getLatestPrice() public view returns (uint256) {
+    function getLatestPrice(uint256 assetPair) public view returns (uint256) {
+      address pricefeed;
+      if(assetPair == 0) {
+        pricefeed = addrPriceFeedBTC;
+      } else {
+        pricefeed = addrPriceFeedETH;
+      }
       //-----------==BSC/Kovan/Rinkeby
-      (,int price,,,) = AggregatorEthereumV3(addrPriceFeed).latestRoundData();
+      (,int price,,,) = AggregatorEthereumV3(pricefeed).latestRoundData();
       return uint256(price);
       //console.log("roundID: %s, price: %s", roundID, price);
       //-----------==XDAI
@@ -1174,8 +920,6 @@ interface IUserRecord {
 }
 
 
-/*
-*/
 /**
  * MIT License
  * ===========
@@ -1188,33 +932,3 @@ interface IUserRecord {
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  */
-/*
-    function withdrawCheck(uint256 _amount)
-        public view returns (
-            bool[] memory bools,
-            uint256[] memory uints,
-            uint256[] memory uintInputs,
-            uint256 amount,
-            bool boolOut
-        )
-        bools = new bool[](4);
-        uints = new uint256[](3);
-        uintInputs = new uint256[](4);
-        
-        address user = msg.sender;
-        uintInputs[0] = _amount;
-        uints[0] = betters[user].balance;
-        uints[1] = totalUnclaimed;
-        uints[2] = getTokenBalance();
-
-        amount = _amount;
-        if(_amount == 0){
-          amount = uints[0] < uints[2] ? uints[0] : uints[2];
-        }
-        //console.log("amountNew:", amount);
-        bools[0] = uints[0] >= amount;
-        bools[1] = totalUnclaimed >= amount;
-        bools[2] = uints[2] >= amount;
-        bools[3] = uints[4] >= amount;
-        boolOut = bools[0] && bools[1] && bools[2] && bools[3];
-    }*/
