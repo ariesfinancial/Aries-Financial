@@ -1,57 +1,28 @@
 /**
- *Submitted for verification at BscScan.com on 2021-02-25
+ *Submitted for verification at BscScan.com on 2021-03-09
 */
 
 //"SPDX-License-Identifier: MIT"
 pragma solidity ^0.8.1;
-//pragma abicoder v2;
 
-//import "./openzeppelinERC20ITF.sol";
-//sol800
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
+/**
+deploy ABDKMathQuadFunc
+deploy priceBetting     ... 3693973 gas
+deploy UserRecord       ... 2606735  gas
 
-    function _msgData() internal view virtual returns (bytes calldata) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
-    }
-}
+verify contract
+update contract out code
+update repo readme with new addresses
 
-//sol800
-abstract contract Ownable is Context {
-    address private _owner;
+set UserRecord address at PriceBetting 998
+change owner of PriceBetting to proper admin
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+Stake a huge amount
 
-    constructor () {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
+Check period1 and period2 of both Pricebetting and UserRecord are matched! Or you get no record!
 
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
+Users approve priceBetting enough token amount<br>
+*/
 
 //sol8.0.0
 interface IERC20 {
@@ -202,8 +173,7 @@ library SafeMath {
     }
 }
 
-//import "hardhat/console.sol";
-
+//----------------------------==
 interface IABDKMathQuadFunc {
   function mulMul(uint256 x, uint256 y, uint256 z
     ) external pure returns (uint256);
@@ -211,67 +181,83 @@ interface IABDKMathQuadFunc {
   function mulDiv(uint256 x, uint256 y, uint256 z
     ) external pure returns (uint256);
 }
-// interface AggregatorXDAI {
-//   function latestAnswer() external view returns (int256);
-// }
 
-//pragma solidity >=0.6.0;
-//import "https://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol"
 interface AggregatorEthereumV3 {
-    function latestRoundData()
-        external view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
+  function latestRoundData()
+      external view
+      returns (
+          uint80 roundId,
+          int256 answer,
+          uint256 startedAt,
+          uint256 updatedAt,
+          uint80 answeredInRound
+      );
+  function getRoundData(uint80 _roundId)
+    external view
+    returns (
+      uint80 roundId,
+      int256 answer,
+      uint256 startedAt,
+      uint256 updatedAt,
+      uint80 answeredInRound
+    );
+
+    event AnswerUpdated(
+        int256 indexed current,
+        uint256 indexed roundId,
+        uint256 updatedAt
+    );
+    event NewRound(
+        uint256 indexed roundId,
+        address indexed startedBy,
+        uint256 startedAt
+    );
 }
 interface IUserRecord {
   function addBet(address user, uint256 period, uint256 idx) external;
   function updateBet(address user, uint256 period, uint256 idx) external;
 }
 
-abstract contract Administration is Ownable {
+contract PriceBetting {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+    using Address for address;
+
+    address public owner;
     address private admin;
     address private governance;
+    address private vault;
+
+    function _msgSender() internal view returns (address) {
+        return msg.sender;
+    }
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    modifier onlyOwner() {
+        require(owner == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+    
     event AccountTransferred(
         address indexed previousAccount,
         address indexed newAccount
     );
-
-    constructor() {
-        admin = _msgSender();
-        governance = _msgSender();
-    }
-
     modifier onlyAdmin() {
         require(_msgSender() == admin, "Caller is not admin");
         _;
     }
 
-    function isOnlyAdmin() public view returns (bool) {
-        return _msgSender() == admin;
+    function isAccount(address addr, uint256 uintNum) public view returns (bool bool1) {
+      if(uintNum == 1) bool1 = addr == admin;
+      if(uintNum == 2) bool1 = addr == governance;
     }
-
-    function transferAccount(address addrNew, uint256 num) external onlyOwner {
-        require(addrNew != address(0), "cannot be zero address");
-        if(num == 0) admin = addrNew;
-        if(num == 1) governance = addrNew;
-        emit AccountTransferred(admin, addrNew);        
-    }
-
-    //-------------------==
-    function isOnlyGov() public view returns (bool) {
-        return _msgSender() == governance;
-    }
-}
-
-contract PriceBetting is Administration {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-    using Address for address;
 
     event Win(
         address indexed user,
@@ -300,15 +286,13 @@ contract PriceBetting is Administration {
     uint256 public idxEP2 = 0;
     uint256 public idxEP1 = 0;
 
-    uint256 public period1 = 900;
-    uint256 public period2 = 1800;
+    uint256 public period1;
+    uint256 public period2;
     uint256 public maxBetAmt = 5 *(10**(18));
     uint256 public maxBetsToClear = 10;
     uint256 public profitRatio = 88; //lesser than 100
-    uint256 public maxUnclaimedPoolRatio = 50; //<100
+    uint256 public maxUnclaimedPoolRatio = 5; //<100
     bool public bettingStatus = true;
-
-    address private vault;
 
     mapping(uint256 => Bet) public betsP2;
     mapping(uint256 => Bet) public betsP1;
@@ -319,16 +303,31 @@ contract PriceBetting is Administration {
     address public addrUserRecord;
     IABDKMathQuadFunc public ABDKMathQuadFunc;
 
-    constructor() {
-      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
-      addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
+    constructor(
+    ) {
+      owner = address(0x13A08dDcD940b8602f147FF228f4c08720456aA3);
+      admin = address(0xAc52301711C49394b17cA585df714307f0C588C0);
+      governance = address(0x13A08dDcD940b8602f147FF228f4c08720456aA3);
+      vault = address(0x13A08dDcD940b8602f147FF228f4c08720456aA3);
 
+      addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
+      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
       addrPriceFeedBTC = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
       addrPriceFeedETH = address(0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
+
+      period1 = 1800; period2 = 3600;
     } 
-    /*-----------== BSC
-      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
+    /*
+    -----------== BSC Testnet
+      addrToken = address(0x9121e7445B4cCD88EF4B509Df17dB029128EbbA0);
+      ABDKMathQuadFunc = IABDKMathQuadFunc(0x1331e0a03D7f820c7d1C6676D4cE76DD2b791Cf2);
+
+      addrPriceFeedBTC = address(0x5741306c21795FdCBb9b265Ea0255F499DFe515C);
+      addrPriceFeedETH = address(0x143db3CEEfbdfe5631aDD3E50f7614B6ba708BA7);  
+      
+      -----------== BSC Mainnet
       addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
+      ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
 
       addrPriceFeedBTC = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
       addrPriceFeedETH = address(0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
@@ -364,7 +363,7 @@ contract PriceBetting is Administration {
     uint256 public maxBetAmt = 5 *(10**(18));
     uint256 public maxBetsToClear = 10;
     uint256 public profitRatio = 88; //lesser than 100
-    uint256 public maxUnclaimedPoolRatio = 50; //<100
+    uint256 public maxUnclaimedPoolRatio = 5; //<100
     bool public bettingStatus = true;
  */
       } else if(option == 106){
@@ -378,6 +377,12 @@ contract PriceBetting is Administration {
       } else if(option == 108){
         require(uintNum > 0, "ratio invalid");
         sharePriceUnit = uintNum;
+
+      } else if(option == 109){
+        require(addr != address(0), "cannot be zero address");
+        if(uintNum == 0) admin = addr;
+        if(uintNum == 1) governance = addr;
+        emit AccountTransferred(admin, addr);        
 
       } else if(option == 997){//MUST clear all bets before changing token address!!!
         require(address(addr).isContract(),"invalid contract");
@@ -394,9 +399,17 @@ contract PriceBetting is Administration {
     }
 
     //--------------------== Public functions
-    function clearBetsExternal(uint256 period) public onlyAdmin {
-        require(period == period2 || period == period1, "invalid period");
-        clearBets(period);
+    function checkStatus1() public view returns (bool status){
+        uint256 maxTotalUnclaimed = ABDKMathQuadFunc.mulDiv(poolBalance, maxUnclaimedPoolRatio, 100);
+        if (totalUnclaimed > maxTotalUnclaimed || poolBalance == 0){
+            status = false;
+        }
+        status = true;
+    }
+
+    function clearBetsExternal() public onlyAdmin {
+        clearBets(period1);
+        clearBets(period2);
     }
 
     function enterBetCheck(
@@ -410,7 +423,7 @@ contract PriceBetting is Administration {
             bool boolOut
         )
     {
-        bools = new bool[](10);
+        bools = new bool[](11);
         uints = new uint256[](6);
         uintInputs = new uint256[](5);
         
@@ -422,7 +435,7 @@ contract PriceBetting is Administration {
 
         address user = msg.sender;
         uint256 allowed = IERC20(addrToken).allowance(user, address(this));
-        bools[0] = amount >= 100 && amount <= maxBetAmt;
+        bools[0] = amount >= 100;
         //amount: 0 invalid, 1 ~ 99 reserved for errCode -99~-1 & 1 ~ 100*profitRatio
         //... use errCode -99 ~ -1
         bools[1] = period == period2 || period == period1;
@@ -444,8 +457,9 @@ contract PriceBetting is Administration {
         bools[6] = amount <= maxBetAmt;
         bools[8] = bettingStatus;
         bools[9] = assetPair < 2;
+        bools[10] = poolBalance > 0;
 
-        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8] && bools[9];
+        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8] && bools[9] && bools[10];
 
         uints[0] = allowed;
         uints[1] = tokenBalanceAtFundingSrc;
@@ -486,23 +500,16 @@ contract PriceBetting is Administration {
         bet.fundingSource = fundingSource;
         bet.result = -1;
 
-        //totalUnsettledBetAmt = totalUnsettledBetAmt + amount);
         //console.log("[sc] bet:", bet);
-
+        //console.log("[sc] period:", period, period1, period2);
         if (period == period1) {
-            idxEP1 = idxEP1 + 1;
+            idxEP1 += 1;
             betsP1[idxEP1] = bet;
             IUserRecord(addrUserRecord).addBet(user, period, idxEP1);
-            if (idxEP1 == 1) {
-                idxSP1 = 1;
-            }
         } else if (period == period2) {
-            idxEP2 = idxEP2 + 1;
+            idxEP2 += 1;
             betsP2[idxEP2] = bet;
             IUserRecord(addrUserRecord).addBet(user, period, idxEP2);
-            if (idxEP2 == 1) {
-                idxSP2 = 1;
-            }
         }
     }
 
@@ -541,24 +548,24 @@ contract PriceBetting is Administration {
             idxStart = idxSP1;
             idxEnd = idxEP1;
         }//if changing period before all bets are cleared, this bet will never be clear!!!
-        if (idxStart > 0 && idxEnd >= idxStart) {
-            //console.log("[sc] betIdx start & end good");
+        if ( idxEnd > idxStart) {
+//            console.log("[sc] betIdx start & end good");
             for (
-                uint256 betIdx = idxStart;
+                uint256 betIdx = idxStart + 1;
                 betIdx < idxStart + maxBetsToClear;
                 betIdx++
             ) {
-                //console.log("[sc] ---------== loop");
-                //console.log("[sc] betIdx: %s, period: %s", betIdx, period);
+//                console.log("[sc] ---------== loop");
+//                console.log("[sc] betIdx: %s, period: %s", betIdx, period);
                 Bet memory bet = getBet(period, betIdx);
 
-               // console.log("bet:: betAt: %s, blockTime: %s", bet.betAt, block.timestamp);
+//                console.log("bet:: betAt: %s, blockTime: %s", bet.betAt, block.timestamp);
                 if (bet.betAt == 0) {
-                    //console.log("[sc] ----== all bets have been settled");
+ //                   console.log("[sc] ----== all bets have been settled");
                     break;
                 }
                 if (block.timestamp < bet.betAt + period) {
-                  //console.log("[sc] ----== bets are waiting");
+//                  console.log("[sc] ----== bets are waiting");
                     break;
                 }
                 settle(period, betIdx);
@@ -597,24 +604,24 @@ contract PriceBetting is Administration {
           //the govBalance gets 0.12
           govBalance += govGain;
           if (bet.bettingOutcome == 0) {
-             // console.log("[sc] ----== Win1: price down");
+//              console.log("[sc] ----== Win1: price down");
               handleWinning(period, betIdx, gain, gaPrin, price);
           } else {
-              //console.log("[sc] ----== Lose1: price down");
+//              console.log("[sc] ----== Lose1: price down");
               handleLosing(period, betIdx, gain, price);
           }
         } else if (price > bet.priceAtBet) {
           //the govBalance gets 0.12
           govBalance += govGain;
           if (bet.bettingOutcome == 1) {
-              //console.log("[sc] ----== Win2: price up");
+//              console.log("[sc] ----== Win2: price up");
               handleWinning(period, betIdx, gain, gaPrin, price);
           } else {
-             // console.log("[sc] ----== Lose2: price up");
+//              console.log("[sc] ----== Lose2: price up");
               handleLosing(period, betIdx, gain, price);
           }
         } else {
-            //console.log("[sc] ----== Same price");
+//            console.log("[sc] ----== Same price");
             handleTie(period, betIdx, price);
         }
     }
@@ -637,7 +644,7 @@ contract PriceBetting is Administration {
         //console.log("[sc] ----== handleWinning");
         //console.log(period, betIdx, gain, gaPrin);
         Bet memory bet = getBet(period, betIdx);
-        
+        require(poolBalance >= bet.amount, "poolBalance1");
         poolBalance = poolBalance.sub(bet.amount);
         // Pool loses 1
         setSharePrice();//after poolBalance updated
@@ -673,6 +680,7 @@ interface IUserRecord {
 
         if (bet.fundingSource == 0) {//from balance
           //add 0 in his balance
+          require(totalUnclaimed >= bet.amount, "totalUnclaimed1");
           totalUnclaimed = totalUnclaimed.sub(bet.amount);
         } else {//from wallet
           //add 0 in his balance
@@ -742,65 +750,82 @@ interface IUserRecord {
 
     event Stake(address indexed user, uint256 amount);
     function stake(uint256 amount) external {
-      require(amount > 0, "amount invalid");
+      require(amount > 0, "amount1");
       //console.log("[solc] stake amount:", amount);
       IERC20(addrToken).safeTransferFrom(msg.sender, address(this), amount);
 
       //to   stake 100 AFI => issues  100/sharePrice shares, +100 AFI in poolBalance
-      updatePooler(true, amount);
-      emit Stake(msg.sender, amount);
-    }
-
-    function updatePooler(bool isToAdd, uint256 amount) private {
-        uint256 oldTotalShares = totalShares;
-        if (isToAdd) {
-          poolBalance += amount;
-          poolers[msg.sender].staking += amount;
-        } else {
-          poolBalance = poolBalance.sub(amount);
-          poolers[msg.sender].staking = poolers[msg.sender].staking.sub(amount);
-        }
-        totalShares = ABDKMathQuadFunc.mulDiv(
-              poolBalance, sharePriceUnit, sharePrice);
-        if (isToAdd) {
+      uint256 oldTotalShares = totalShares;
+      poolBalance += amount;
+      poolers[msg.sender].staking += amount;
+      totalShares = ABDKMathQuadFunc.mulDiv(
+      poolBalance, sharePriceUnit, sharePrice);
 // newTotalShares = new_poolBalance / shareprice
 // newShares = newTotalShares - oldTotalShares
 // add newShares to this pooler
-          poolers[msg.sender].shares += (totalShares.sub(oldTotalShares));
-
-        } else {
-// newTotalShares = new_poolBalance / shareprice ... v
-// newShares = newTotalShares - oldTotalShares ...(-ve)
-// add newShares to this pooler ...
-          poolers[msg.sender].shares = poolers[msg.sender].shares.sub(oldTotalShares.sub(totalShares));
-        }
+      poolers[msg.sender].shares += (totalShares.sub(oldTotalShares));
+      emit Stake(msg.sender, amount);
     }
+
     event Unstake(address indexed user, uint256 amount);
     function unstake(uint256 _amount) external {
       //console.log("[sc] unstake amount:", amount);
       //to unstake 100 AFI => issues -100/sharePrice shares, -100 AFI in poolBalance,
-      (, uint256 amount, bool[] memory bools) = checkUnstake(msg.sender, _amount);
-      require(bools[0], "invalid input");
-      updatePooler(false, amount);
-      tokenSafeTransfer(msg.sender, amount);
-      emit Unstake(msg.sender, amount);
-    }
-    function checkUnstake(address user, uint256 _amount)
-        public view returns (uint256 effShares, uint256 amount, bool[] memory bools)
-    {
-      bools = new bool[](5);
-      effShares = ABDKMathQuadFunc.mulDiv(poolers[user].shares, sharePrice, sharePriceUnit);
 
-      amount = _amount;
-      if(_amount == 0 || _amount > poolers[msg.sender].staking){
-        amount = poolers[msg.sender].staking;
+      (uint256 effPoolerBalance, , , , bool isOk) = checkUnstake(msg.sender, _amount);
+      require(isOk, "invalid inputs");
+
+      if (_amount <= poolBalance){
+        //uint256 effPoolerBalance = ABDKMathQuadFunc.mulDiv( poolers[msg.sender].shares, poolBalance, totalShares);
+        if (_amount > 0 && _amount <= effPoolerBalance){
+          //win & tie
+          if ( effPoolerBalance >= poolers[msg.sender].staking && poolers[msg.sender].staking >= _amount){ 
+            poolers[msg.sender].staking = poolers[msg.sender].staking.sub(_amount);
+            uint256 oldTotalShares = totalShares;
+            poolBalance = poolBalance.sub(_amount);
+            totalShares = ABDKMathQuadFunc.mulDiv(poolBalance, sharePriceUnit, sharePrice);
+            poolers[msg.sender].shares = poolers[msg.sender].shares.sub(oldTotalShares.sub(totalShares));
+            tokenSafeTransfer(msg.sender, _amount);
+          }
+          else if ( _amount > poolers[msg.sender].staking){
+            poolers[msg.sender].staking = 0;
+            uint256 oldTotalShares = totalShares;
+            poolBalance = poolBalance.sub(_amount);
+            totalShares = ABDKMathQuadFunc.mulDiv(poolBalance, sharePriceUnit, sharePrice);
+            poolers[msg.sender].shares = poolers[msg.sender].shares.sub(oldTotalShares.sub(totalShares));
+            tokenSafeTransfer(msg.sender, _amount);
+          }
+          //lose
+          else if ( poolers[msg.sender].staking > effPoolerBalance ) {
+            poolers[msg.sender].staking = poolers[msg.sender].staking.sub(_amount);
+            uint256 oldTotalShares = totalShares;
+            poolBalance = poolBalance.sub(_amount);
+            totalShares = ABDKMathQuadFunc.mulDiv(poolBalance, sharePriceUnit, sharePrice);
+            poolers[msg.sender].shares = poolers[msg.sender].shares.sub(oldTotalShares.sub(totalShares));
+            tokenSafeTransfer(msg.sender, _amount);
+          }
+        }
       }
+    }
+
+    function checkUnstake(address user, uint256 _amount)
+        public view returns (uint256 effPoolerBalance, uint256 amount, Pooler memory pooler, bool[] memory bools, bool isOk)
+    {
+      bools = new bool[](3);
+      //effShares = ABDKMathQuadFunc.mulDiv(poolers[user].shares, sharePrice, sharePriceUnit);
+
+      effPoolerBalance = ABDKMathQuadFunc.mulDiv( poolers[msg.sender].shares, poolBalance, totalShares);
+
+      pooler = poolers[user];
+      amount = _amount;
+      // if(_amount == 0 || _amount > poolers[msg.sender].staking){
+      //   amount = poolers[msg.sender].staking;
+      // }
+      bools[0] = amount <= poolBalance;
       bools[1] = amount > 0;
-      bools[2] = amount <= poolBalance;
-      bools[3] = amount <= poolers[user].staking;
-      bools[4] = amount <= effShares;
-      //totalShares = ABDKMathQuadFunc.mulDiv(poolBalance, sharePriceUnit, sharePrice);
-      bools[0] = bools[1] && bools[2] && bools[3] && bools[4];
+      bools[2] = amount <= effPoolerBalance;
+
+      isOk = bools[0] && bools[1] && bools[2];
     }
 
     function setSharePrice() private {
@@ -812,18 +837,18 @@ interface IUserRecord {
       }
     }
     function getDataStaking(address user)
-        public view returns (uint256, uint256, uint256, Pooler memory, uint256)
+        public view returns (uint256, uint256, uint256, Pooler memory, uint256, uint256)
     {
+      uint256 effPoolerBalance;//int256 winloseBalance
+      if (totalShares == 0 || poolBalance == 0) {
+        effPoolerBalance = poolers[user].shares;
+      } else {
+        effPoolerBalance = ABDKMathQuadFunc.mulDiv(
+            poolers[user].shares, poolBalance, totalShares);
+      }
       return (poolBalance, totalShares, 
-        getTokenBalance(address(this)), poolers[user], sharePrice);
+        getTokenBalance(address(this)), poolers[user], sharePrice, effPoolerBalance);
     }
-    //, uint256 effPoolerBalance, int256 winloseBalance
-    // if (totalShares == 0 || poolBalance == 0) {
-    //   effPoolerBalance = poolers[user].shares;
-    // } else {
-    //   effPoolerBalance = ABDKMathQuadFunc.mulDiv(
-    //       poolers[user].shares, poolBalance, totalShares);
-    // }
     // winloseBalance = int256(effPoolerBalance) - int256(poolers[user].staking);
     // return(effPoolerBalance, winloseBalance)
 
@@ -888,7 +913,7 @@ interface IUserRecord {
     event Harvest(address indexed user, uint256 amount, address indexed toAddr);
     // use getDataBetting() to debug
     function harvest(uint256 _amount) public {
-        require(isOnlyGov(), "caller invalid");
+        require(isAccount(msg.sender, 2), "caller invalid");
         //console.log("[sc] harvest amount:", amount);
         require(vault != address(0), "vault cannot be zero address");
         //require(address(vault).isContract(), "call to non-contract");
@@ -916,10 +941,13 @@ interface IUserRecord {
       // return uint256(
       //     AggregatorXDAI(addrPriceFeed).latestAnswer()
       // );
-  }
+    }
+   
 }
 
 
+/*
+*/
 /**
  * MIT License
  * ===========
