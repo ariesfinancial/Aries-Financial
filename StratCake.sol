@@ -1712,9 +1712,9 @@ contract StratX is Ownable, ReentrancyGuard, Pausable {
     bool public isAfiComp= true; // this vault is purely for staking. eg. WBNB-AFI staking vault.
 
     address public farmContractAddress = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; // address of farm, eg, PCS, Thugs etc.
-    uint256 public constant pid = 11; // pid of BUSD-USDT pool in pancakeswap
-    address public constant wantAddress = 0xc15fa3E22c912A276550F3E5FE3b0Deb87B55aCd;    
-    address public constant token0Address= 0x55d398326f99059fF775485246999027B3197955;
+    uint256 public constant pid = 2; // pid of WBNB-BUSD pool in pancakeswap
+    address public constant wantAddress = 0x1B96B92314C44b159149f7E0303511fB2Fc4774f;    
+    address public constant token0Address= 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public constant token1Address= 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
     address public constant earnedAddress= 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82;
     address public constant uniRouterAddress= 0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F; // uniswap, pancakeswap etc
@@ -1723,7 +1723,7 @@ contract StratX is Ownable, ReentrancyGuard, Pausable {
         0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public constant afiFarmAddress= 0x94Ed0cd7A6458229b087C4CA0D76cDCAA495Be1B; 
     address public constant AFIAddress = 0x6C77dF12c39CAE90C4c46E5C19177679b7235CFa;
-    address public govAddress = 0xfE170Dd8F4C0f335326dF1892D75de47c8d2CBC1; // timelock contract
+    address public govAddress = 0x13A08dDcD940b8602f147FF228f4c08720456aA3; // timelock contract
     bool public onlyGov = true;
 
     uint256 public lastEarnBlock = 0;
