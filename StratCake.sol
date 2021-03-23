@@ -1726,7 +1726,7 @@ contract StratX is Ownable, ReentrancyGuard, Pausable {
     uint256 public wantLockedTotal = 0;
     uint256 public sharesTotal = 0;
 
-    uint256 public controllerFee = 130;
+    uint256 public controllerFee = 110;
     uint256 public constant controllerFeeMax = 10000; // 100 = 1%
     uint256 public constant controllerFeeUL = 300;
 
