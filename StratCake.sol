@@ -1,9 +1,5 @@
 /**
- *Submitted for verification at BscScan.com on 2021-03-12
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-03-11
+ *Submitted for verification at BscScan.com on 2021-03-20
 */
 
 //"SPDX-License-Identifier: MIT"
@@ -1712,35 +1708,35 @@ contract StratX is Ownable, ReentrancyGuard, Pausable {
     bool public isAfiComp= true; // this vault is purely for staking. eg. WBNB-AFI staking vault.
 
     address public farmContractAddress = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; // address of farm, eg, PCS, Thugs etc.
-    uint256 public constant pid = 2; // pid of WBNB-BUSD pool in pancakeswap
-    address public constant wantAddress = 0x1B96B92314C44b159149f7E0303511fB2Fc4774f;    
-    address public constant token0Address= 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    uint256 public constant pid = 63; // pid of BUSD-UST pool in pancakeswap
+    address public constant wantAddress = 0xD1F12370b2ba1C79838337648F820a87eDF5e1e6;    
+    address public constant token0Address= 0x23396cF899Ca06c4472205fC903bDB4de249D6fC;
     address public constant token1Address= 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
+    
     address public constant earnedAddress= 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82;
     address public constant uniRouterAddress= 0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F; // uniswap, pancakeswap etc
 
-    address public constant wbnbAddress =
-        0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    address public constant wbnbAddress = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public constant afiFarmAddress= 0x94Ed0cd7A6458229b087C4CA0D76cDCAA495Be1B; 
     address public constant AFIAddress = 0x6C77dF12c39CAE90C4c46E5C19177679b7235CFa;
-    address public govAddress = 0x13A08dDcD940b8602f147FF228f4c08720456aA3; // timelock contract
+    address public govAddress = 0xfE170Dd8F4C0f335326dF1892D75de47c8d2CBC1; // timelock contract
     bool public onlyGov = true;
 
     uint256 public lastEarnBlock = 0;
     uint256 public wantLockedTotal = 0;
     uint256 public sharesTotal = 0;
 
-    uint256 public controllerFee = 70;
+    uint256 public controllerFee = 130;
     uint256 public constant controllerFeeMax = 10000; // 100 = 1%
     uint256 public constant controllerFeeUL = 300;
 
-    uint256 public buyBackRate = 150;
+    uint256 public buyBackRate = 270;
     uint256 public constant buyBackRateMax = 10000; // 100 = 1%
     uint256 public constant buyBackRateUL = 800;
     address public constant buyBackAddress =
         0x000000000000000000000000000000000000dEaD;
 
-    uint256 public entranceFeeFactor = 9990; // < 0.1% entrance fee - goes to pool + prevents front-running
+    uint256 public entranceFeeFactor = 10000; // < 0.1% entrance fee - goes to pool + prevents front-running
     uint256 public constant entranceFeeFactorMax = 10000;
     uint256 public constant entranceFeeFactorLL = 9950; // 0.5% is the max entrance fee settable. LL = lowerlimit
 
