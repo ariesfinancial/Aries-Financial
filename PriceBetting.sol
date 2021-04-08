@@ -1,39 +1,9 @@
 /**
- *Submitted for verification at BscScan.com on 2021-04-02
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-04-02
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-04-01
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-03-29
+ *Submitted for verification at BscScan.com on 2021-04-07
 */
 
 //"SPDX-License-Identifier: MIT"
 pragma solidity ^0.8.1;
-
-// import "hardhat/console.sol";
-
-/**
-deploy ABDKMathQuadFunc
-deploy RoundIdCtrt      ... 2606735  gas
-deploy priceBetting     ... 4624304 gas
-
-verify contract
-update contract out code
-update repo readme with new addresses
-
-change owner of PriceBetting to proper admin
-
-Stake a huge amount
-
-Users approve priceBetting enough token amount<br>
-*/
 
 //sol8.0.0
 interface IERC20 {
@@ -310,24 +280,26 @@ contract PriceBetting {
         Bet[5] eth;
     }
 
-    constructor()
+    constructor(
+        address _addrToken,
+        address _ABDKMathQuadAddr,
+        address _addrPriceFeedBTC,
+        address _addrPriceFeedETH,
+        address _addrRoundIdCtrt
+    )
     {
-        owner = address(0x13A08dDcD940b8602f147FF228f4c08720456aA3);
-
+        owner = msg.sender;
         authLevel[owner] = 9;
-        authLevel[msg.sender] = 9;
-        authLevel[0xAc52301711C49394b17cA585df714307f0C588C0] = 9;
-        authLevel[0x2aC0Eec2D11a2Ce5F5F1706F3F4F11d8ad58Eb77] = 9;
         governance = owner;
         vault = owner;
 
-        addrToken = address(0x82D6F82a82d08e08b7619E6C8F139391C23DC539);
-        ABDKMathQuadFunc = IABDKMathQuadFunc(0x441FbCa0cE9b475bE04556DDC4d1371db6F65c66);
-        addrPriceFeedBTC = address(0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
-        addrPriceFeedETH = address(0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
-        addrRoundIdCtrt = address(0xB5b6Bf5f920b34138EBa96F7Bd036046FB764c3b);
-        period1 = 1800;
-        period2 = 3600;
+        addrToken = _addrToken;
+        ABDKMathQuadFunc = IABDKMathQuadFunc(_ABDKMathQuadAddr);
+        addrPriceFeedBTC = _addrPriceFeedBTC;
+        addrPriceFeedETH = _addrPriceFeedETH;
+        addrRoundIdCtrt = _addrRoundIdCtrt;
+        period1 = 3600;
+        period2 = 14400;
     }
     /*-----------== BSC Testnet
       addrToken = address(0x9121e7445B4cCD88EF4B509Df17dB029128EbbA0);
@@ -354,40 +326,62 @@ contract PriceBetting {
         require(authLevel[msg.sender] > 0, "not authorized");
         _;
     }
+    
+    modifier isOwner()
+    {
+        require(msg.sender == owner, "not owner");
+        _;
+    }
+    
+    event SetOwner(address _owner);
+    function setOwner(address _owner) 
+    external isOwner
+    {
+        owner = _owner;
+        emit SetAdmin(_owner); 
+    }
+    
+    event SetAdmin(address _user);
+    function setAdmin(address _user)
+    external isOwner
+    {
+        authLevel[_user] = 1;
+        emit SetAdmin(_user);
+    }
 
     event SetSettings(uint256 indexed option, address addr, bool _bool, uint256 uintNum);
-    event SetAccount(address indexed previousAccount, address indexed newAccount, uint256 indexed uintNum);
+    // event SetAccount(address indexed previousAccount, address indexed newAccount, uint256 indexed uintNum);
     event Win(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
     event Lose(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
     event Tie(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
 
-    function setAccount(
-        uint256 option,
-        address addr,
-        uint256 uintNum
-    )
-    external
-    {
-        require(owner == msg.sender, "not owner");
-        require(addr != address(0), "zero address");
-        if (option == 990) {
-            if (uintNum == 0) {
-            } else if (uintNum == 1) {
-                emit SetAccount(governance, addr, 9);
-                governance = addr;
-            } else if (uintNum == 9) {
-                emit SetAccount(owner, addr, 9);
-                owner = addr;
-            }
-        } else if (option == 991) {
-            emit SetAccount(address(0), addr, uintNum);
-            authLevel[addr] = uintNum;
+    // function setAccount(
+    //     uint256 option,
+    //     address addr,
+    //     uint256 uintNum
+    // )
+    // external
+    // {
+    //     require(owner == msg.sender, "not owner");
+    //     require(addr != address(0), "zero address");
+    //     if (option == 990) {
+    //         if (uintNum == 0) {
+    //         } else if (uintNum == 1) {
+    //             emit SetAccount(governance, addr, 9);
+    //             governance = addr;
+    //         } else if (uintNum == 9) {
+    //             emit SetAccount(owner, addr, 9);
+    //             owner = addr;
+    //         }
+    //     } else if (option == 991) {
+    //         emit SetAccount(address(0), addr, uintNum);
+    //         authLevel[addr] = uintNum;
 
-        } else if (option == 995) {
-        } else {
+    //     } else if (option == 995) {
+    //     } else {
 
-        }
-    }
+    //     }
+    // }
 
     function isAccount(
         address addr,
@@ -981,6 +975,66 @@ contract PriceBetting {
         updateBet(_user, _assetPair, lastetIndex, bet.amount, block.timestamp, _price, _roundId);
         emit Tie(bet.user, block.timestamp, bet.amount, _assetPair);
     }
+
+    // function getBetterBets(
+    //     address _user,
+    //     uint256 _assetPair,  // 0: bitcoin, 1: ethereum
+    //     uint256 _idxPage,
+    //     uint256 _outLength,
+    //     uint256 _logType     // 0: historical, 1: active
+    // )
+    // public view
+    // returns (Bet[] memory)
+    // {
+
+
+    //     require(_user != address(0), "invalid user");
+    //     require(_assetPair == 0 || _assetPair == 1, "invalid assetPair");
+    //     require(_idxPage > 0, "invalid idxPage");
+    //     require(_outLength > 0, "invalid outLength");
+    //     require(_logType == 0 || _logType == 1, "invalid logType");
+
+    //     Bet[50] memory bets = getBets(_user, _assetPair);
+
+    //     // console.log("Bets length", bets.length);
+
+    //     if (_logType == 0) {
+    //         // historical log
+    //         uint start = (_outLength * _idxPage) - _outLength;
+    //         uint end = (_outLength * _idxPage) - 1;
+
+    //         if (bets.length < end) {
+    //             end = bets.length - 1;
+    //         }
+
+    //         Bet memory latestBet = getLatestBet(_user, _assetPair);
+    //         if (latestBet.result == -1) {
+    //             end -= 1;
+    //         }
+
+    //         // console.log("start", start);
+    //         // console.log("end", end);
+
+    //         Bet[] memory response = new Bet[](end - start + 1);
+    //         // console.log("Response data length", response.length);
+    //         uint j = 0;
+    //         for (uint i = start; i <= end; i++) {
+    //             if (bets[i].result != -1 && bets[i].user != address(0)) {
+    //                 response[j] = bets[i];
+    //                 j++;
+    //             }
+    //         }
+    //         return response;
+    //     } else {
+    //         // active log
+    //         Bet[] memory response = new Bet[](1);
+    //         Bet memory bet = getLatestBet(_user, _assetPair);
+    //         if (bet.result == -1) {
+    //             response[0] = bet;
+    //         }
+    //         return response;
+    //     }
+    // }
 
     uint256 public sharePriceUnit = 1000; // 1*(10**9);
     uint256 public sharePrice = sharePriceUnit;
