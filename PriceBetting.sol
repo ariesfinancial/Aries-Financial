@@ -1,9 +1,27 @@
 /**
- *Submitted for verification at BscScan.com on 2021-04-07
+ *Submitted for verification at BscScan.com on 2021-04-12
 */
 
 //"SPDX-License-Identifier: MIT"
 pragma solidity ^0.8.1;
+
+// import "hardhat/console.sol";
+
+/**
+deploy ABDKMathQuadFunc
+deploy RoundIdCtrt      ... 2606735  gas
+deploy priceBetting     ... 4624304 gas
+
+verify contract
+update contract out code
+update repo readme with new addresses
+
+change owner of PriceBetting to proper admin
+
+Stake a huge amount
+
+Users approve priceBetting enough token amount<br>
+*/
 
 //sol8.0.0
 interface IERC20 {
@@ -201,7 +219,7 @@ interface IRoundIdCtrt {
     function getHistoricalPrice1(uint80 back, uint256 assetId) external view returns (uint256 price, uint80 roundId, uint256 updatedAt);
 
     function getHistoricalPrice2(uint256 timestamp, uint256 assetId) external view returns (uint256 priceOut, uint256[] memory uintOut, int256[] memory intOut);
-    
+
     function getHistoricalPrice(uint256 timestamp, uint256 assetId) external view returns (uint256 priceOut, uint256[] memory uintOut, int256[] memory intOut);
 
     function timeToRoundIds(uint256 timestamp) external view returns (RoundIdSet memory roundIdSet);
@@ -274,10 +292,8 @@ contract PriceBetting {
     }
 
     struct Bets {
-        uint btcDataCounter;
-        uint ethDataCounter;
-        Bet[5] btc;
-        Bet[5] eth;
+        Bet btc;
+        Bet eth;
     }
 
     constructor(
@@ -326,21 +342,21 @@ contract PriceBetting {
         require(authLevel[msg.sender] > 0, "not authorized");
         _;
     }
-    
+
     modifier isOwner()
     {
         require(msg.sender == owner, "not owner");
         _;
     }
-    
+
     event SetOwner(address _owner);
-    function setOwner(address _owner) 
+    function setOwner(address _owner)
     external isOwner
     {
         owner = _owner;
-        emit SetAdmin(_owner); 
+        emit SetAdmin(_owner);
     }
-    
+
     event SetAdmin(address _user);
     function setAdmin(address _user)
     external isOwner
@@ -354,34 +370,7 @@ contract PriceBetting {
     event Win(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
     event Lose(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
     event Tie(address indexed user, uint256 indexed timestamp, uint256 result, uint256 assetPair);
-
-    // function setAccount(
-    //     uint256 option,
-    //     address addr,
-    //     uint256 uintNum
-    // )
-    // external
-    // {
-    //     require(owner == msg.sender, "not owner");
-    //     require(addr != address(0), "zero address");
-    //     if (option == 990) {
-    //         if (uintNum == 0) {
-    //         } else if (uintNum == 1) {
-    //             emit SetAccount(governance, addr, 9);
-    //             governance = addr;
-    //         } else if (uintNum == 9) {
-    //             emit SetAccount(owner, addr, 9);
-    //             owner = addr;
-    //         }
-    //     } else if (option == 991) {
-    //         emit SetAccount(address(0), addr, uintNum);
-    //         authLevel[addr] = uintNum;
-
-    //     } else if (option == 995) {
-    //     } else {
-
-    //     }
-    // }
+    event BetResult(Bet _bet);
 
     function isAccount(
         address addr,
@@ -473,9 +462,6 @@ contract PriceBetting {
     )
     external
     {
-        // (, , ,bool boolOut) = enterBetCheck(amount, period, assetPair, bettingOutcome, fundingSource);
-        // require(boolOut, "invalid input");
-
         address user = msg.sender;
 
         if (FundingSource(_fundingSource) == FundingSource.balance) {
@@ -485,8 +471,13 @@ contract PriceBetting {
             // wallet
             IERC20(addrToken).safeTransferFrom(user, address(this), _amount);
         }
-
-        Bet memory newBet = createBet(
+        
+        Bet memory _bet = getBet(user, _assetPair);
+        if (_bet.user != address(0) && !_bet.isSettled) {
+            clearBet(user, _assetPair);
+        }
+        
+        createNewBet(
             user,
             _amount,
             _period,
@@ -494,161 +485,18 @@ contract PriceBetting {
             _bettingOutcome,
             _fundingSource
         );
-
-        (, bool isNotEmpty) = getLatestBetIndex(user, _assetPair);
-        if (isNotEmpty) {
-            clearBet(user, _assetPair);
-            Bet memory bet = getLatestBet(user, _assetPair);
-            if (bet.isSettled) {
-                addBet(user, _assetPair, newBet);
-            }
-        } else {
-            addBet(user, _assetPair, newBet);
-        }
-
-    }
-    
-    /// @dev Clear latest bet
-    /// @param _user        User address
-    /// @param _assetPair   Asset that user want to bet. 0: bitcoin, 1: ethereum
-    function clearBet(
-        address _user,
-        uint _assetPair
-    )
-    public
-    {
-        Bet memory bet = getLatestBet(_user, _assetPair);
-        if (bet.user != address(0) && !bet.isSettled) {
-            uint256 clearBetTime = bet.betAt + bet.period;
-            if (block.timestamp >= clearBetTime) {
-                settle(_user, _assetPair);
-            }
-        }
-
-    }
-
-
-    /// @dev Check function for input result when betting
-    /// @param amount           Token amount user bet
-    /// @param period           Time for predication
-    /// @param assetPair        Asset that user want to bet. 0: bitcoin, 1: ethereum
-    /// @param bettingOutcome   The outcome user predicated. 0: low, 1: high
-    /// @param fundingSource    Where user bet from. 0: balance, 1: wallet
-    function enterBetCheck(
-        uint256 amount,
-        uint256 period,
-        uint256 assetPair,
-        uint256 bettingOutcome,
-        uint256 fundingSource
-    )
-    public view
-    returns (
-        bool[] memory bools,
-        uint256[] memory uints,
-        uint256[] memory uintInputs,
-        bool boolOut
-    )
-    {
-        bools = new bool[](11);
-        uints = new uint256[](7);
-        uintInputs = new uint256[](5);
-
-        uintInputs[0] = amount;
-        uintInputs[1] = period;
-        uintInputs[2] = bettingOutcome;
-        uintInputs[3] = fundingSource;
-        uintInputs[4] = assetPair;
-
-        address user = msg.sender;
-        uint256 allowed = IERC20(addrToken).allowance(user, address(this));
-        bools[0] = amount >= 100;
-        //amount: 0 invalid, 1 ~ 99 reserved for errCode -99~-1 & 1 ~ 100*profitRatio
-        //... use errCode -99 ~ -1
-        bools[1] = period == period2 || period == period1;
-        bools[2] = bettingOutcome < 2;
-        bools[3] = fundingSource < 2;
-        // balance: 0, deposit: 1
-
-        uint256 ctrtTokenbalance = getTokenBalance(address(this));
-        uint256 maxTotalUnclaimed = ABDKMathQuadFunc.mulDiv(ctrtTokenbalance, maxTotalUnclaimedRatio, 100);
-        bools[4] = totalUnclaimed <= maxTotalUnclaimed;
-
-        uint256 tokenBalanceAtFundingSrc;
-        if (fundingSource == 0) {
-            // bet from balance
-            tokenBalanceAtFundingSrc = betters[user].balance;
-            bools[7] = amount <= totalUnclaimed;
-        } else {
-            // bet from wallet
-            tokenBalanceAtFundingSrc = getTokenBalance(user);
-            bools[7] = amount <= allowed;
-        }
-        bools[5] = amount <= tokenBalanceAtFundingSrc;
-        bools[6] = amount <= maxBetAmt;
-        bools[8] = bettingStatus;
-        bools[9] = assetPair < 2;
-        bools[10] = poolBalance > 0;
-
-        boolOut = bools[0] && bools[1] && bools[2] && bools[3] && bools[4] && bools[5] && bools[6] && bools[7] && bools[8] && bools[9] && bools[10];
-
-        uints[0] = allowed;
-        uints[1] = tokenBalanceAtFundingSrc;
-        uints[2] = totalUnclaimed;
-        uints[3] = betters[user].balance;
-        uints[4] = maxBetAmt;
-        uints[5] = maxTotalUnclaimed;
-        uints[6] = ctrtTokenbalance;
-    }
-
-
-    /// @dev Add new into betting records
-    /// @param _user         The same as msg.sender
-    /// @param _assetPair    Asset that user want to bet. 0: bitcoin, 1: ethereum
-    /// @param _newBet       New bet record that will be added into records
-    function addBet(
-        address _user,
-        uint _assetPair,
-        Bet memory _newBet
-    )
-    internal
-    {
-        AssetPair assetPair = AssetPair(_assetPair);
-        require(assetPair == AssetPair.bitcoin || assetPair == AssetPair.ethereum, "Invalide Asset Pair");
-
-        if (assetPair == AssetPair.bitcoin) {
-            uint index = accounts[_user].btcDataCounter;
-            accounts[_user].btc[index] = _newBet;
-            accounts[_user].btcDataCounter += 1;
-        } else {
-            uint index = accounts[_user].ethDataCounter;
-            accounts[_user].eth[index] = _newBet;
-            accounts[_user].ethDataCounter += 1;
-        }
-    }
-
-    /// @dev Delete a result from bet records
-    /// @param _assetPair    Asset that user want to bet. 0: bitcoin, 1: ethereum
-    /// @param _index        The index of bet
-    function deleteBet(
-        uint _assetPair,
-        uint _index
-    )
-    public authorized
-    {
-        // TODO: Not need yet
+        
     }
 
     /// @dev Update betting result
     /// @param _user         The msg.sender
     /// @param _assetPair    Asset that user want to bet. 0: bitcoin, 1: ethereum
-    /// @param _index        Index of bet which will be updated
     /// @param _result       Result that user is win, lose or tie
     /// @param _settledAt    Actual time to judge win or lose.
     /// @param _roundId      The ID records the price at the time of winning or losing
     function updateBet(
         address _user,
         uint _assetPair,
-        uint _index,
         uint _result,
         uint _settledAt,
         uint _settledPrice,
@@ -660,45 +508,21 @@ contract PriceBetting {
 
         require(_user != address(0), "Invalid user address");
         require(assetPair == AssetPair.bitcoin || assetPair == AssetPair.ethereum, "Invalid asset pair");
-        require(_index >= 0 && _index <= maxSizeOfArray, "Invalid bet index");
 
         if (assetPair == AssetPair.bitcoin) {
-            accounts[_user].btc[_index].result = _result;
-            accounts[_user].btc[_index].roundId = _roundId;
-            accounts[_user].btc[_index].settledAt = _settledAt;
-            accounts[_user].btc[_index].settledPrice = _settledPrice;
-            accounts[_user].btc[_index].isSettled = true;
+            accounts[_user].btc.result = _result;
+            accounts[_user].btc.roundId = _roundId;
+            accounts[_user].btc.settledAt = _settledAt;
+            accounts[_user].btc.settledPrice = _settledPrice;
+            accounts[_user].btc.isSettled = true;
+            emit BetResult(accounts[_user].btc);
         } else {
-            accounts[_user].eth[_index].result = _result;
-            accounts[_user].eth[_index].roundId = _roundId;
-            accounts[_user].eth[_index].settledAt = _settledAt;
-            accounts[_user].eth[_index].settledPrice = _settledPrice;
-            accounts[_user].eth[_index].isSettled = true;
-        }
-    }
-
-    /// @dev Get a exist bet from betting records
-    /// @param  _user         The msg.sender
-    /// @param  _assetPair    Asset that user want to bet. 0: bitcoin, 1: ethereum
-    /// @param  _index        The index of bet
-    /// @return _bet          Bet record
-    function readBet(
-        address _user,
-        uint _assetPair,
-        uint _index
-    )
-    public view
-    returns (Bet memory _bet)
-    {
-        AssetPair assetPair = AssetPair(_assetPair);
-        require(_user != address(0), "Invalid user address");
-        require(_index >= 0 && _index <= maxSizeOfArray, "Invalid bet index");
-        require(assetPair == AssetPair.bitcoin || assetPair == AssetPair.ethereum, "Incalide Asset Pair");
-
-        if (assetPair == AssetPair.bitcoin) {
-            _bet = accounts[_user].btc[_index];
-        } else {
-            _bet = accounts[_user].eth[_index];
+            accounts[_user].eth.result = _result;
+            accounts[_user].eth.roundId = _roundId;
+            accounts[_user].eth.settledAt = _settledAt;
+            accounts[_user].eth.settledPrice = _settledPrice;
+            accounts[_user].eth.isSettled = true;
+            emit BetResult(accounts[_user].eth);
         }
     }
 
@@ -709,8 +533,7 @@ contract PriceBetting {
     /// @param  _assetPair         The asset user bet. 0: bitcoin, 1: ethereum
     /// @param  _bettingOutcome    The outcome user predicated. 0: low, 1: high, 2: tie
     /// @param  _fundingSource     Where user bet from. 0: balance, 1: wallet
-    /// @return newBet             New bet
-    function createBet(
+    function createNewBet(
         address _user,
         uint _amount,
         uint _period,
@@ -718,129 +541,77 @@ contract PriceBetting {
         uint _bettingOutcome,
         uint _fundingSource
     )
-    internal view
-    returns (
-        Bet memory newBet
-    )
+    internal
     {
-        newBet.user = _user;
-        newBet.betAt = block.timestamp;
-        newBet.amount = _amount;
-        newBet.period = _period;
-        newBet.assetPair = AssetPair(_assetPair);
-        newBet.priceAtBet = getLatestPrice(_assetPair);
-        newBet.bettingOutcome = BettingOutcome(_bettingOutcome);
-        newBet.fundingSource = FundingSource(_fundingSource);
-    }
-
-    /// @dev Get the latest index from bet records
-    /// @param  _user           User address
-    /// @param  _assetPair      The asset user bet. 0: bitcoin, 1: ethereum
-    /// @return _latestIndex    The latest index of records
-    /// @return _isNotEmpty     Check if counter is not equal to zero, if so then the data record is not empty
-    function getLatestBetIndex(
-        address _user,
-        uint _assetPair
-    )
-    public view
-    returns (
-        uint _latestIndex,
-        bool _isNotEmpty
-    )
-    {
-        AssetPair assetPair = AssetPair(_assetPair);
-        require(_user != address(0));
-        require(assetPair == AssetPair.bitcoin || assetPair == AssetPair.ethereum, "Invalid asset pair");
-
-        uint dataCount;
-        if (assetPair == AssetPair.bitcoin) {
-            dataCount = accounts[_user].btcDataCounter;
-        } else {
-            dataCount = accounts[_user].ethDataCounter;
-        }
-
-        _isNotEmpty = dataCount != 0;
-        if (_isNotEmpty) {
-            _latestIndex = (dataCount % maxSizeOfArray) - 1;
-        }
-    }
-
-    /// @dev Get tha last one bet record
-    /// @param  _user        The msg.sender
-    /// @param  _assetPair   The asset user bet. 0: bitcoin, 1: ethereum
-    /// @return _bet         The latest bet record
-    function getLatestBet(
-        address _user,
-        uint _assetPair
-    )
-    public view
-    returns (Bet memory _bet)
-    {
-        (uint index, bool isNotEmpty) = getLatestBetIndex(_user, _assetPair);
-        require(index >= 0 && index < maxSizeOfArray, "Invalid bet index");
-
-        if (isNotEmpty) {
-            return readBet(_user, _assetPair, index);
-        }
-    }
-
-    /// @dev Get all of bet records by asset
-    /// @param  _assetPair  The asset user bet. 0: bitcoin, 1: ethereum
-    /// @return _bets       The list of bets
-    function getHistoricalBets(
-        address _user,
-        uint _assetPair
-    )
-    public view
-    returns (Bet[] memory _bets)
-    {
-        Bet[5] memory bets;
-        _bets = new Bet[](5);
-
+        Bet memory _bet;
+        
+        _bet.user = _user;
+        _bet.betAt = block.timestamp;
+        _bet.amount = _amount;
+        _bet.period = _period;
+        _bet.assetPair = AssetPair(_assetPair);
+        _bet.priceAtBet = getLatestPrice(_assetPair);
+        _bet.bettingOutcome = BettingOutcome(_bettingOutcome);
+        _bet.fundingSource = FundingSource(_fundingSource);
+        
         if (AssetPair(_assetPair) == AssetPair.bitcoin) {
-            bets = accounts[_user].btc;
+            accounts[_user].btc = _bet;
         } else {
-            bets = accounts[_user].eth;
-        }
-
-        uint j = 0;
-        for (uint i = 0; i < 5; i++) {
-            if (bets[i].user != address(0) && bets[i].isSettled) {
-                _bets[j] = bets[i];
-                j++;
-            }
+            accounts[_user].eth = _bet;
         }
     }
-
-    /// @dev Get the active bet records
+    
+    /// @dev Get current bet infomation
     /// @param  _user       User address
-    /// @param  _assetPair  The bet asset. 0: bitcoin, 1: ethereum
-    /// @return _bet        The result
-    function getActiveBet(
+    /// @param  _assetPair  The asset user bet. 0: bitcoin, 1: ethereum
+    function getBet(
         address _user,
         uint _assetPair
     )
     public view
-    returns (
-        Bet[1] memory _bet
+    returns(
+        Bet memory _bet
     )
     {
-        (uint index, bool isNotEmpty) = getLatestBetIndex(_user, _assetPair);
-        if (isNotEmpty) {
-            Bet memory b = readBet(_user, _assetPair, index);
-            if (b.user != address(0) && !b.isSettled) {
-                _bet[0] = b;
-            }
+        if (AssetPair(_assetPair) == AssetPair.bitcoin) {
+            _bet = accounts[_user].btc;
+        } else {
+            _bet = accounts[_user].eth;
+        }
+    }
+    
+    /// @dev Clear current bet by executing judgement function
+    /// @param  _user       User address
+    /// @param  _assetPair  The asset user bet. 0: bitcoin, 1: ethereum
+    function clearBet(
+        address _user,
+        uint _assetPair
+    )
+    public
+    {
+        Bet memory _bet;
+        
+        if (AssetPair(_assetPair) == AssetPair.bitcoin) {
+            _bet = accounts[_user].btc;
+        } else {
+            _bet = accounts[_user].eth;
+        }
+        
+        if (_bet.user != address(0) && _bet.isSettled == false) {
+            settle(_user, _assetPair);
         }
     }
 
+    /// @dev The judgement function for bet
+    /// @param  _user       User Address
+    /// @param  _assetPair  The bet asset. 0: bitcoin, 1: ethereum
     function settle(
         address _user,
         uint _assetPair
     )
     private
     {
-        Bet memory bet = getLatestBet(_user, _assetPair);
+        Bet memory bet = getBet(_user, _assetPair);
         (uint256 price, uint256[] memory uintOut,) = IRoundIdCtrt(addrRoundIdCtrt).getHistoricalPrice(bet.betAt + bet.period, uint256(bet.assetPair));
         uint256 roundId = uintOut[3];
 
@@ -853,11 +624,9 @@ contract PriceBetting {
         uint256 gaPrin = bet.amount + gain;
         uint256 govGain = bet.amount.sub(gain);
 
-        BettingOutcome bettingOutcome = BettingOutcome(bet.bettingOutcome);
-
         if (price < bet.priceAtBet) {
             govBalance += govGain;
-            if (bettingOutcome == BettingOutcome.low) {
+            if (bet.bettingOutcome == BettingOutcome.low) {
                 // console.log("[sc] ----== Win1: price down");
                 handleWinning(_user, _assetPair, gain, gaPrin, price, roundId);
             } else {
@@ -879,6 +648,7 @@ contract PriceBetting {
         }
     }
 
+    /// @dev Winning handler
     function handleWinning(
         address _user,
         uint _assetPair,
@@ -891,7 +661,7 @@ contract PriceBetting {
     {
         // console.log("[sc] ----== handleWinning");
         // console.log(assetPair, gain, gaPrin);
-        Bet memory bet = getLatestBet(_user, _assetPair);
+        Bet memory bet = getBet(_user, _assetPair);
         require(poolBalance >= bet.amount, "poolBalance1");
         poolBalance = poolBalance.sub(bet.amount);
         // Pool loses 1
@@ -910,11 +680,11 @@ contract PriceBetting {
         updateBetterBalance(true, _gaPrin, bet.user);
         updateBetterWinloss(true, _gain, bet.user);
 
-        (uint lastetIndex,) = getLatestBetIndex(_user, _assetPair);
-        updateBet(_user, _assetPair, lastetIndex, _gaPrin, block.timestamp, _price, _roundId);
+        updateBet(_user, _assetPair, _gaPrin, block.timestamp, _price, _roundId);
         emit Win(bet.user, block.timestamp, _gaPrin, _assetPair);
     }
 
+    /// @dev Losing handler
     function handleLosing(
         address _user,
         uint256 _assetPair,
@@ -924,7 +694,7 @@ contract PriceBetting {
     )
     internal
     {
-        Bet memory bet = getLatestBet(_user, _assetPair);
+        Bet memory bet = getBet(_user, _assetPair);
         poolBalance += _gain;
         // Pool gets 0.88
         setSharePrice();
@@ -942,11 +712,11 @@ contract PriceBetting {
             //add 0 in totalUnclaimed
         }
         updateBetterWinloss(false, bet.amount, bet.user);
-        (uint lastetIndex,) = getLatestBetIndex(_user, _assetPair);
-        updateBet(_user, _assetPair, lastetIndex, 0, block.timestamp, _price, _roundId);
+        updateBet(_user, _assetPair, 0, block.timestamp, _price, _roundId);
         emit Lose(bet.user, block.timestamp, 0, _assetPair);
     }
-
+    
+    /// @dev Tie handler
     function handleTie(
         address _user,
         uint256 _assetPair,
@@ -955,9 +725,7 @@ contract PriceBetting {
     )
     internal
     {
-        // console.log("[sc] ----== handleTie");
-        Bet memory bet = getLatestBet(_user, _assetPair);
-        //Pool gets nothing, the govBalance gets 0.
+        Bet memory bet = getBet(_user, _assetPair);
 
         FundingSource fundingSource = FundingSource(bet.fundingSource);
 
@@ -971,70 +739,9 @@ contract PriceBetting {
         //add 1 in his balance for both cases above
         updateBetterBalance(true, bet.amount, bet.user);
 
-        (uint lastetIndex,) = getLatestBetIndex(_user, _assetPair);
-        updateBet(_user, _assetPair, lastetIndex, bet.amount, block.timestamp, _price, _roundId);
+        updateBet(_user, _assetPair, bet.amount, block.timestamp, _price, _roundId);
         emit Tie(bet.user, block.timestamp, bet.amount, _assetPair);
     }
-
-    // function getBetterBets(
-    //     address _user,
-    //     uint256 _assetPair,  // 0: bitcoin, 1: ethereum
-    //     uint256 _idxPage,
-    //     uint256 _outLength,
-    //     uint256 _logType     // 0: historical, 1: active
-    // )
-    // public view
-    // returns (Bet[] memory)
-    // {
-
-
-    //     require(_user != address(0), "invalid user");
-    //     require(_assetPair == 0 || _assetPair == 1, "invalid assetPair");
-    //     require(_idxPage > 0, "invalid idxPage");
-    //     require(_outLength > 0, "invalid outLength");
-    //     require(_logType == 0 || _logType == 1, "invalid logType");
-
-    //     Bet[50] memory bets = getBets(_user, _assetPair);
-
-    //     // console.log("Bets length", bets.length);
-
-    //     if (_logType == 0) {
-    //         // historical log
-    //         uint start = (_outLength * _idxPage) - _outLength;
-    //         uint end = (_outLength * _idxPage) - 1;
-
-    //         if (bets.length < end) {
-    //             end = bets.length - 1;
-    //         }
-
-    //         Bet memory latestBet = getLatestBet(_user, _assetPair);
-    //         if (latestBet.result == -1) {
-    //             end -= 1;
-    //         }
-
-    //         // console.log("start", start);
-    //         // console.log("end", end);
-
-    //         Bet[] memory response = new Bet[](end - start + 1);
-    //         // console.log("Response data length", response.length);
-    //         uint j = 0;
-    //         for (uint i = start; i <= end; i++) {
-    //             if (bets[i].result != -1 && bets[i].user != address(0)) {
-    //                 response[j] = bets[i];
-    //                 j++;
-    //             }
-    //         }
-    //         return response;
-    //     } else {
-    //         // active log
-    //         Bet[] memory response = new Bet[](1);
-    //         Bet memory bet = getLatestBet(_user, _assetPair);
-    //         if (bet.result == -1) {
-    //             response[0] = bet;
-    //         }
-    //         return response;
-    //     }
-    // }
 
     uint256 public sharePriceUnit = 1000; // 1*(10**9);
     uint256 public sharePrice = sharePriceUnit;
