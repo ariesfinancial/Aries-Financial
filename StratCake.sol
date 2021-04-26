@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at BscScan.com on 2021-03-20
+ *Submitted for verification at BscScan.com on 2021-04-07
 */
 
 //"SPDX-License-Identifier: MIT"
@@ -1700,33 +1700,38 @@ contract Pausable is Context {
 
 contract StratX is Ownable, ReentrancyGuard, Pausable {
     // Maximises yields in pancakeswap
-
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    bool public isCAKEStaking= false; // only for staking CAKE using pancakeswap's native CAKE staking contract.
-    bool public isAfiComp= true; // this vault is purely for staking. eg. WBNB-AFI staking vault.
+//------------== 
+bool public isCAKEStaking = false ;
+bool public isAfiComp = true ;
+uint256 public constant pid = 96 ;
+address public constant wantAddress = 0x7Bb89460599Dbf32ee3Aa50798BBcEae2A5F7f6a ;
+address public constant token0Address= 0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51 ;
+address public constant token1Address= 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c ;
 
-    address public farmContractAddress = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; // address of farm, eg, PCS, Thugs etc.
-    uint256 public constant pid = 63; // pid of BUSD-UST pool in pancakeswap
-    address public constant wantAddress = 0xD1F12370b2ba1C79838337648F820a87eDF5e1e6;    
-    address public constant token0Address= 0x23396cF899Ca06c4472205fC903bDB4de249D6fC;
-    address public constant token1Address= 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
-    
-    address public constant earnedAddress= 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82;
-    address public constant uniRouterAddress= 0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F; // uniswap, pancakeswap etc
+address public farmContractAddress = 0x73feaa1eE314F8c655E354234017bE2193C9E24E ;
+address public constant earnedAddress = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 ;
+uint256 public controllerFee = 110 ;
 
+
+//------------== 
+
+    // ---------------==
+    address public constant uniRouterAddress= 0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F;
     address public constant wbnbAddress = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    address public constant afiFarmAddress= 0x94Ed0cd7A6458229b087C4CA0D76cDCAA495Be1B; 
-    address public constant AFIAddress = 0x6C77dF12c39CAE90C4c46E5C19177679b7235CFa;
-    address public govAddress = 0xfE170Dd8F4C0f335326dF1892D75de47c8d2CBC1; // timelock contract
+
+    address public constant afiFarmAddress = 0x657D0420F696aAedC48B40545Ba5e85b10e4C746; 
+    address public constant AFIAddress = 0xC6bfcf0469a74b36c070b807162fFcbF7B0a1103;
+    address public govAddress = 0x6f0026469e743C75c984b0579F854F1709206114;
+
     bool public onlyGov = true;
 
     uint256 public lastEarnBlock = 0;
     uint256 public wantLockedTotal = 0;
     uint256 public sharesTotal = 0;
 
-    uint256 public controllerFee = 110;
     uint256 public constant controllerFeeMax = 10000; // 100 = 1%
     uint256 public constant controllerFeeUL = 300;
 
@@ -1747,11 +1752,24 @@ contract StratX is Ownable, ReentrancyGuard, Pausable {
     address[] public token1ToEarnedPath;
 
     constructor(
-        
+        // address _afiFarmAddress,
+        // address _govAddress,
+        // address _AFI
     ) public {
+      // afiFarmAddress = _afiFarmAddress;
+      // govAddress = _govAddress;
+      // AFIAddress = _AFI;
 
-        
+      /*Testnet:
+      afiFarmAddress = 0xf282eDE82Ce95C2F3942da66BA157E5B0Ced4A36;
+      govAddress = 0xC6319149f466FFbF19B46a0a090cFF7d92D99638;
+      AFIAddress = 0x8c55Bd73Da717b673Ce24c4764F2bB4fE0D605a5;
 
+      Mainnet:
+      afiFarmAddress = 0x94Ed0cd7A6458229b087C4CA0D76cDCAA495Be1B;
+      govAddress = 0x13A08dDcD940b8602f147FF228f4c08720456aA3;
+      AFIAddress = 0xC6bfcf0469a74b36c070b807162fFcbF7B0a1103;
+      */
 
         if (isAfiComp) {
 
